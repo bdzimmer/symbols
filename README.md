@@ -1,4 +1,4 @@
-# SYMBOLS
+# S Y M B O L S
 
 Symbols is a collection of tools for various applications:
 
