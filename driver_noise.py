@@ -12,6 +12,7 @@ import math
 import os
 import pickle
 import random
+import time
 
 import cv2
 import numpy as np
@@ -60,6 +61,103 @@ def curl_field_vector(x, y, z, px, py, pz):
     return z_dy - y_dz, x_dz - z_dx, y_dx - x_dy
 
 
+def draw_frame(
+        canvas,
+        p_poss,     # list of particle positions at each timestep
+        actives,    # list of which particles are active at each timestep
+        cam_trans,  # camera transform
+        view_pos,   # view position
+
+        max_life,
+        trail_length,
+        particle_size,
+        depth_sort,
+
+        prof        # profiler
+        ):
+
+    """
+    Draw a single frame of particles on a canvas image, modifying it in-place.
+    """
+
+    prof.tick("trans")
+
+    height, width, _ = canvas.shape
+    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
+
+    # TODO: only keep the last X for the trail length of the oldest particle?
+
+    # list of arrays
+    p_pos_ps = []
+
+    for (p_pos, p_active) in p_poss:  # render all positions up to and including current position
+
+        # apply camera and perspective transformations
+        p_pos_c = transforms.transform(cam_trans, np.transpose(p_pos))
+        p_pos_p = transforms.perspective(p_pos_c, view_pos)
+        # align and convert to int
+        # TODO: flip y properly
+        p_pos_p = np.clip(np.array(p_pos_p + p_shift), -width * 2, height * 2)
+        p_pos_p = np.array(p_pos_p, dtype=np.int)
+        p_pos_p = np.transpose(p_pos_p)
+
+        # TODO: build a list of particles to render, with depths
+        p_pos_ps.append((p_pos_p, p_pos_c[2, :]))  # smaller z is farther away
+
+    prof.tock("trans")
+
+    # ~~~~ ~~~~ ~~~~ ~~~~
+
+    prof.tick("draw")
+
+    canvas_im = Image.fromarray(canvas)  # I think I can do this once
+    canvas_draw = ImageDraw.Draw(canvas_im)
+
+    # stack arrays
+
+    coords = np.concatenate([x[0] for x in p_pos_ps], axis=0)
+    depths = np.concatenate([x[1] for x in p_pos_ps], axis=0)
+    actives_head = np.concatenate([p_poss[-1][1] for _ in range(len(p_poss))], axis=0)
+
+    if depth_sort:
+        sorted_idxs = np.argsort(depths)
+    else:
+        sorted_idxs = range(coords.shape[0])
+
+    for p_idx in sorted_idxs:
+
+        p_age_tail = actives[p_idx]         # age at current tail position?
+        p_age_head = actives_head[p_idx]    # age at head in current frame?
+
+        if -1 < p_age_tail <= max_life and p_age_head > -1:
+
+            age_diff = p_age_head - p_age_tail  # age difference between head and tail
+
+            color_scale = max(trail_length - age_diff, 0) / trail_length
+            color_scale = max(min(color_scale, 1.0), 0.0)
+            color = (
+                int(255 * color_scale),
+                int(255 * color_scale * color_scale),
+                0)
+
+            x, y = coords[p_idx, :]
+
+            # cv2.circle(canvas, (x, y), particle_size, color, -1)
+
+            if particle_size == 0:
+                canvas_draw.point([(x, y)], color)
+            else:
+                canvas_draw.ellipse(
+                    [x - particle_size, y - particle_size, x + particle_size, y + particle_size],
+                    color)
+
+    canvas = np.array(canvas_im)
+
+    prof.tock("draw")
+
+    return canvas
+
+
 def main():
     """main program"""
 
@@ -70,12 +168,11 @@ def main():
     random.seed(1)
     np.random.seed(1)
 
-    width = 800
-    height = 800
+    width = 1280  # 800
+    height = 720  # 800
 
-    output_dirname = "curl_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = output_dirname + ".mp4"
-    output_poss_filename = "positions.pkl"
+    cam_pos = np.array([0.0, 8.0, 20.0])      # 0 8 20
+    view_pos = np.array([0.0, 0.0, 600.0])    # 0 0 800
 
     fps = 30
     n_frames = 800  # 400
@@ -84,21 +181,28 @@ def main():
     field_zoom = 1.0
     step = 0.05
     field_translation_rate = 0.01  # slight upward pull
-    ramp_scale = 15.0  # 10-40, most testing was with 20
+    ramp_scale = 15.0  # 10-40, most testing was with 15
     frame_skip = 2     # lazy
     particle_size = 0  # 2
-    glow_strength = 5.0  # 1.0 for particles of size 2, 5.0 for 0
+    glow_strength = 3.5  # 1.0 for particles of size 2, 5.0 for 0
     max_life = 180   # 180
     depth_sort = False
+    render_delay = 0.25     # introduce delay to avoid burning up CPU
 
     calculate_positions = False
+    single_frame = None
 
-    cam_pos = np.array([0.0, 8.0, 20.0])
-    view_pos = np.array([0.0, 0.0, 800.0])
+    output_poss_filename = "positions.pkl"
+    output_prefix = "curl_" + datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
-
-    os.makedirs(output_dirname, exist_ok=True)
+    if single_frame is None:
+        output_dirname = output_prefix
+        frame_prefix = ""
+        output_filename = output_dirname + ".mp4"
+    else:
+        output_dirname = ""
+        frame_prefix = output_prefix
+        output_filename = ""
 
     def ramp(x):
         """smooth ramp function from curl noise paper"""
@@ -204,106 +308,60 @@ def main():
 
     actives = np.concatenate([x[1] for x in p_poss], axis=0)
 
-    for frame_idx in range(len(p_poss)):
-        print(frame_idx + 1, "/", n_frames)
-
-        prof.tick("trans")
-
-        # TODO: only keep the last X for the trail length of the oldest particle?
-
+    def generate_frame(frame_idx):
         # calculate camera transform
 
         # static angle
         # rot = np.identity(3)
         # cam_trans = transforms.camera_transform(rot, cam_pos)
 
+        # dynamic angle
         angle = (frame_idx * 0.25 * np.pi) / n_frames
         cam_trans = np.dot(
             transforms.transformation(np.identity(3), -cam_pos),
             util.rotation_y(angle))
 
-        # list of arrays
-        p_pos_ps = []
-
-        for (p_pos, p_active) in p_poss[:(frame_idx + 1)]:  # render all positions up to and including  current position
-
-            # apply camera and perspective transformations
-            p_pos_c = transforms.transform(cam_trans, np.transpose(p_pos))
-            p_pos_p = transforms.perspective(p_pos_c, view_pos)
-            # align and convert to int
-            # TODO: flip y properly
-            p_pos_p = np.clip(np.array(p_pos_p + p_shift), -width * 2, height * 2)
-            p_pos_p = np.array(p_pos_p, dtype=np.int)
-            p_pos_p = np.transpose(p_pos_p)
-
-            # TODO: build a list of particles to render, with depths
-            p_pos_ps.append((p_pos_p, p_pos_c[2, :]))  # smaller z is farther away
-
-        prof.tock("trans")
-
-        # ~~~~ ~~~~ ~~~~ ~~~~
-
-        prof.tick("draw")
-
         canvas = np.zeros((height, width, 3), dtype=np.uint8)
-        canvas_im = Image.fromarray(canvas)  # I think I can do this once
-        canvas_draw = ImageDraw.Draw(canvas_im)
-
-        # stack arrays
-
-        coords = np.concatenate([x[0] for x in p_pos_ps], axis=0)
-        depths = np.concatenate([x[1] for x in p_pos_ps], axis=0)
-        actives_head = np.concatenate([p_poss[frame_idx][1] for _ in range(len(p_poss))], axis=0)
-
-        if depth_sort:
-            sorted_idxs = np.argsort(depths)
-        else:
-            sorted_idxs = range(coords.shape[0])
-
-        for p_idx in sorted_idxs:
-
-            p_age_tail = actives[p_idx]         # age at current tail position?
-            p_age_head = actives_head[p_idx]    # age at head in current frame?
-
-            if -1 < p_age_tail <= max_life and p_age_head > -1:
-
-                age_diff = p_age_head - p_age_tail  # age difference between head and tail
-
-                color_scale = max(trail_length - age_diff, 0) / trail_length
-                color_scale = max(min(color_scale, 1.0), 0.0)
-                color = (
-                    int(255 * color_scale),
-                    int(255 * color_scale * color_scale),
-                    0)
-
-                x, y = coords[p_idx, :]
-
-                # cv2.circle(canvas, (x, y), particle_size, color, -1)
-
-                if particle_size == 0:
-                    canvas_draw.point([(x, y)], color)
-                else:
-                    canvas_draw.ellipse(
-                        [x - particle_size, y - particle_size, x + particle_size, y + particle_size],
-                        color)
-
-        canvas = np.array(canvas_im)
-
-        prof.tock("draw")
+        canvas = draw_frame(
+            canvas,
+            p_poss[0:(frame_idx + 1)],
+            actives,
+            cam_trans,
+            view_pos,
+            max_life,
+            trail_length,
+            particle_size,
+            depth_sort,
+            prof)
 
         prof.tick("eff")
         canvas = effects.glow(canvas, 63, glow_strength)
         prof.tock("eff")
 
         prof.tick("disk")
-        if frame_idx % frame_skip == 0:
-            cv2.imwrite(
-                os.path.join(output_dirname, str(int(frame_idx / frame_skip)).rjust(5, "0") + ".png"),
-                canvas)
+        cv2.imwrite(
+            os.path.join(
+                output_dirname,
+                frame_prefix + str(int(frame_idx / frame_skip)).rjust(5, "0") + ".png"),
+            canvas)
         prof.tock("disk")
 
-    command = util.ffmpeg_command(output_dirname, output_filename, width, height, fps)
-    os.system(command)
+    if single_frame is not None:
+        # generate a single name named after the frame number
+        generate_frame(single_frame)
+
+    else:
+        # animate
+        os.makedirs(output_dirname, exist_ok=True)
+        for frame_idx in range(len(p_poss)):
+            print(frame_idx + 1, "/", n_frames)
+            if frame_idx % frame_skip == 0:
+                generate_frame(frame_idx)
+                if render_delay > 0.0:
+                    time.sleep(render_delay)
+
+        command = util.ffmpeg_command(output_dirname, output_filename, width, height, fps)
+        os.system(command)
 
     prof.tock("total")
 
