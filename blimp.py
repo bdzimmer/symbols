@@ -18,6 +18,11 @@ import numpy as np
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
 
+if os.name == "nt":
+    FONTS_DIRNAME = ""
+else:
+    FONTS_DIRNAME = os.path.expanduser("~/.fonts")
+
 
 def main(argv):
     """main program"""
@@ -346,7 +351,8 @@ def memoize(fn):
 @memoize
 def load_font(filename, font_size):
     """load a font"""
-    return ImageFont.truetype(filename, font_size)
+    font_filename = os.path.join(FONTS_DIRNAME, filename)
+    return ImageFont.truetype(font_filename, font_size)
 
 
 @memoize
