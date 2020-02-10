@@ -181,7 +181,7 @@ def assemble_group(
     return np.array(res)
 
 
-def text_custom_kerning(text, font, color, kern_add):
+def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
     """text, controlling letter spacing"""
 
     letter_sizes = [font.getsize(x) for x in text]
@@ -224,20 +224,26 @@ def text_custom_kerning(text, font, color, kern_add):
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
-        draw.text((offset, 0), letter, font=font, fill=color)
+        draw.text(
+            (offset, 0), letter,
+            font=font, fill=color,
+            stroke_width=stroke_width, stroke_fill=stroke_fill)
         offset = offset + letter_width + kern_add
 
     return image
 
 
-def text_standard(text, font, color):
+def text_standard(text, font, color, stroke_width, stroke_fill):
     """standard text rendering"""
     size = font.getsize(text)
     offset = font.getoffset(text)
     image = Image.new("RGBA", (size[0], size[1]), (255, 255, 255, 0))
     draw = ImageDraw.Draw(image)
     # TODO: how to use offset here?
-    draw.text((0 - offset[0], 0), text, font=font, fill=color)
+    draw.text(
+        (0 - offset[0], 0),
+        text, font=font, fill=color,
+        stroke_width=stroke_width, stroke_fill=stroke_fill)
     return image
 
 
@@ -287,11 +293,13 @@ def render_layer(layer, resources_dirname):
         text = layer["text"]
         color = tuple(layer.get("color", (0, 0, 0, 255)))
         kern_add = layer.get("kern_add", 0)
+        stroke_width = layer.get("stroke_width", 0)
+        stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
 
         font = load_font(font_filename, font_size)
-        image = text_standard(text, font, color)
-        image_custom = text_custom_kerning(text, font, color, kern_add)
+        image_custom = text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add)
         if DEBUG:
+            image = text_standard(text, font, color, stroke_width, stroke_fill)
             image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
             image_custom.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
         image = np.array(image_custom)

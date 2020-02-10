@@ -35,14 +35,20 @@ class TestsComposite(unittest.TestCase):
         im_bg = cv2.imread(bg_filename)
 
         layer_text = {
-          "type": "text",
-          "text": "PROVIDENCE",
-          "font": "Orbitron-Bold.ttf",
-          "size": 250,
-          "color": text_color,
-          "effects": [
-            {"type": "glow", "dilate": 4, "blur": 31}
-          ]
+            "type": "text",
+            "text": "PROVIDENCE",
+            "font": "Orbitron-Bold.ttf",
+            "size": 250,
+            "color": text_color,
+            "stroke_width": 3,
+            "stroke_fill": (0, 0, 255, 255),
+            "effects": [
+                {
+                    "type": "glow",
+                    "dilate": 4,
+                    "blur": 31
+                }
+            ]
         }
 
         # render layer, expand borders, apply effects
