@@ -204,9 +204,17 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
     # TODO: y offset?
     # find maximum height
     height = max([x[1] for x in letter_sizes])
+    height_total = height + stroke_width * 2
+
+    # TODO: add stroke width logic to original text function
 
     offset_x_first = letter_offsets[0][0]
-    width_total = sum(widths) - offset_x_first + (len(widths) - 1) * kern_add
+    width_total = (
+        sum(widths)
+        - offset_x_first
+        + (len(widths) - 1) * kern_add
+        + stroke_width * 2  # Needs to be * 2 since it is added on all sides
+    )
 
     if False and DEBUG:
         print(letter_pairs)
@@ -217,9 +225,10 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
         print("true widths:    ", widths)
         print("sum ind. widths:", sum([x[0] for x in letter_sizes]))
         print("getsize width:  ", font.getsize(text)[0])
+        print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
-    image = Image.new("RGBA", (width_total, height), (255, 255, 255, 0))
+    image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
     draw = ImageDraw.Draw(image)
 
     offset = 0 - offset_x_first

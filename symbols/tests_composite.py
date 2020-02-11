@@ -29,7 +29,8 @@ class TestsComposite(unittest.TestCase):
         text_color = [0, 0, 0, 255]  # [255, 255, 255, 255],
 
         bg_filename = os.path.join(
-            "/media/ben/Storage/Ben/Google Drive/art",
+            # "/media/ben/Storage/Ben/Google Drive/art",
+            "C:/Ben/Google Drive/art",
             "unsplash",
             "ian-keefe-2X89pjPktyA-unsplash.jpg")
         im_bg = cv2.imread(bg_filename)
@@ -70,6 +71,9 @@ class TestsComposite(unittest.TestCase):
         comp = Image.fromarray(im_bg_chunk)
         comp.alpha_composite(Image.fromarray(im_text))
         comp = np.array(comp)
+
+        # TODO: add some vertical lines to ensure that things are centered properly
+        # TODO: seeing something like a one-pixel offset issue with glow
 
         if DEBUG:
             cv2.imwrite("text_0.png", im_text)
