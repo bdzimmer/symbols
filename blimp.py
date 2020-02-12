@@ -249,10 +249,10 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
             (offset, 0), letter,
             font=font,
 
-            fill="black",  # TODO: toggle fill and stroke fill
+            fill="white",  # TODO: toggle fill and stroke fill
 
             stroke_width=stroke_width,
-            stroke_fill="white",  # stroke_fill
+            # stroke_fill="white",  # stroke_fill
         )
         offset = offset + letter_width + kern_add
 
@@ -262,7 +262,7 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
     solid_np = np.array(solid)
     solid_np[:, :, 3] = solid_np[:, :, 3] * (np.array(alpha) / 255.0)
     # set all completely transparent pixels to (255, 255, 255, 0)
-    # solid_np[solid_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
+    solid_np[solid_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
 
     cv2.imwrite("stroke2.png", solid_np)
 
