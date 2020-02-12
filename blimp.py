@@ -113,8 +113,7 @@ def assemble_group(
 
         # ~~~~ render
 
-        layer_image = render_layer(
-            layer, resources_dirname)
+        layer_image = render_layer(layer, resources_dirname)
 
         # ~~~~ expand borders
 
@@ -122,7 +121,16 @@ def assemble_group(
         border_y = layer.get("border_y", 0)
 
         if border_x > 0 or border_y > 0:
-            layer_image = expand_border(layer_image, border_x, border_y)
+            # if we added stroke to a font, shrink the actual amount we
+            # are expanding the border by to compensate for the increased size
+
+            stroke_width = layer.get("stroke_width", 0)
+
+            if layer["type"] == "text" and stroke_width > 0:
+                layer_image = expand_border(
+                    layer_image, border_x - stroke_width, border_y - stroke_width)
+            else:
+                layer_image = expand_border(layer_image, border_x, border_y)
 
         # ~~~~ apply effects
 
@@ -228,16 +236,39 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
         print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
-    image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
-    draw = ImageDraw.Draw(image)
+    # WIP - improved font rendering
+    # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
+
+    # image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
+    alpha = Image.new("L", (width_total, height_total), 0)
+    draw = ImageDraw.Draw(alpha)
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
         draw.text(
             (offset, 0), letter,
-            font=font, fill=color,
-            stroke_width=stroke_width, stroke_fill=stroke_fill)
+            font=font,
+
+            fill="black",  # TODO: toggle fill and stroke fill
+
+            stroke_width=stroke_width,
+            stroke_fill="white",  # stroke_fill
+        )
         offset = offset + letter_width + kern_add
+
+    solid = Image.new("RGBA", (width_total, height_total), color)
+    #  = Image.eval(alpha, lambda p: 255 * (int(p != 0)))  # everywhere that isn't completely transparent
+    # image = Image.composite(solid, image, mask)
+    solid_np = np.array(solid)
+    solid_np[:, :, 3] = solid_np[:, :, 3] * (np.array(alpha) / 255.0)
+    # set all completely transparent pixels to (255, 255, 255, 0)
+    # solid_np[solid_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
+
+    cv2.imwrite("stroke2.png", solid_np)
+
+    image = Image.fromarray(solid_np)
+
+    # TODO: repeat for stroke!
 
     return image
 
@@ -429,6 +460,7 @@ def apply_effect(image, effect, resources_dirname):
         dilate_size = effect.get("dilate", 16)
         blur_size = effect.get("blur", 127)
         color = tuple(effect.get("color", (0, 0, 0)))
+        only = effect.get("only", False)
 
         edge = cv2.Canny(image, 100, 200)
         kernel = cv2.getStructuringElement(
@@ -439,7 +471,9 @@ def apply_effect(image, effect, resources_dirname):
         glow = np.tile(np.reshape(color, (1, 1, 3)), (image.shape[0], image.shape[1], 1))
         glow = np.concatenate((glow, np.expand_dims(edge, axis=2)), axis=2)
         glow = Image.fromarray(glow)
-        glow.paste(Image.fromarray(image), (0, 0), Image.fromarray(image))
+        if not only:
+            # glow.paste(Image.fromarray(image), (0, 0), Image.fromarray(image))
+            glow.alpha_composite(Image.fromarray(image), (0, 0))
         image = np.array(glow)
 
     elif effect_type == "mask_onto":

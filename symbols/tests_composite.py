@@ -40,14 +40,15 @@ class TestsComposite(unittest.TestCase):
             "text": "PROVIDENCE",
             "font": "Orbitron-Bold.ttf",
             "size": 250,
-            "color": text_color,
-            "stroke_width": 3,
+            "color": (0, 0, 0, 255),  # text_color,
+            "stroke_width": 4,
             "stroke_fill": (0, 0, 255, 255),
             "effects": [
                 {
                     "type": "glow",
                     "dilate": 4,
-                    "blur": 31
+                    "blur": 31,
+                    "only": False
                 }
             ]
         }

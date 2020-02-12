@@ -1,3 +1,5 @@
 *.json
+*.png
+*.jpg
 __pycache__
 .idea
