@@ -236,41 +236,60 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
         print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
-    # WIP - improved font rendering
+    # improved font rendering
     # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
 
     # image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
-    alpha = Image.new("L", (width_total, height_total), 0)
-    draw = ImageDraw.Draw(alpha)
+    alpha_text = Image.new("L", (width_total, height_total), 0)
+    draw_text = ImageDraw.Draw(alpha_text)
+
+    alpha_stroke = Image.new("L", (width_total, height_total), 0)
+    draw_stroke = ImageDraw.Draw(alpha_stroke)
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
-        draw.text(
-            (offset, 0), letter,
+        draw_text.text(
+            (offset, 0),
+            letter,
             font=font,
-
-            fill="white",  # TODO: toggle fill and stroke fill
-
+            fill="white",
             stroke_width=stroke_width,
-            # stroke_fill="white",  # stroke_fill
-        )
+            stroke_fill="white")
+        draw_stroke.text(
+            (offset, 0),
+            letter,
+            font=font,
+            fill="black",
+            stroke_width=stroke_width,
+            stroke_fill="white")
+
         offset = offset + letter_width + kern_add
 
-    solid = Image.new("RGBA", (width_total, height_total), color)
-    #  = Image.eval(alpha, lambda p: 255 * (int(p != 0)))  # everywhere that isn't completely transparent
-    # image = Image.composite(solid, image, mask)
-    solid_np = np.array(solid)
-    solid_np[:, :, 3] = solid_np[:, :, 3] * (np.array(alpha) / 255.0)
+    # build text layer
+    solid_text = Image.new("RGBA", (width_total, height_total), color)
+    solid_text_np = np.array(solid_text)
+    solid_text_np[:, :, 3] = solid_text_np[:, :, 3] * (np.array(alpha_text) / 255.0)
     # set all completely transparent pixels to (255, 255, 255, 0)
-    solid_np[solid_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
+    solid_text_np[solid_text_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
 
-    cv2.imwrite("stroke2.png", solid_np)
+    image = Image.fromarray(solid_text_np)
 
-    image = Image.fromarray(solid_np)
+    if stroke_width > 0:
+        # build stroke layer
+        solid_stroke = Image.new("RGBA", (width_total, height_total), stroke_fill)
+        solid_stroke_np = np.array(solid_stroke)
+        solid_stroke_np[:, :, 3] = solid_stroke_np[:, :, 3] * (np.array(alpha_stroke) / 255.0)
+        # set all completely transparent pixels to (255, 255, 255, 0)
+        solid_stroke_np[solid_stroke_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
 
-    # TODO: repeat for stroke!
+        # composite stroke onto text
+        image = Image.alpha_composite(image, Image.fromarray(solid_stroke_np))
 
-    return image
+    # debugging
+    # cv2.imwrite("text.png", solid_text_np)
+    # cv2.imwrite("stroke.png", solid_stroke_np)
+
+    return np.array(image)
 
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
@@ -473,7 +492,7 @@ def apply_effect(image, effect, resources_dirname):
         glow = Image.fromarray(glow)
         if not only:
             # glow.paste(Image.fromarray(image), (0, 0), Image.fromarray(image))
-            glow.alpha_composite(Image.fromarray(image), (0, 0))
+            glow.alpha_composite(Image.fromarray(image))
         image = np.array(glow)
 
     elif effect_type == "mask_onto":
