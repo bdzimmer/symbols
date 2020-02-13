@@ -289,7 +289,7 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
     # cv2.imwrite("text.png", solid_text_np)
     # cv2.imwrite("stroke.png", solid_stroke_np)
 
-    return np.array(image)
+    return image
 
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
@@ -313,6 +313,7 @@ def render_layer(layer, resources_dirname):
 
     if layer_type == "image":
         filename = layer["filename"]
+        print(resources_dirname)
 
         image = load_image(os.path.join(resources_dirname, filename))
 
@@ -501,9 +502,14 @@ def apply_effect(image, effect, resources_dirname):
         layer["width"] = layer.get("width", image.shape[1])
         layer["height"] = layer.get("height", image.shape[0])
         effect_layer = render_layer(layer, resources_dirname)
+        # trim in case the layer type doesn't respect width and height
+        effect_layer = effect_layer[0:layer["height"], 0:layer["width"], :]
         effect_layer[:, :, 3] = image[:, :, 3]
         image_pil = Image.fromarray(image)
         image_pil.alpha_composite(Image.fromarray(effect_layer))
+        # I think what I want is to just return effect_layer and not do the above composite.
+        # could be wrong.
+
         image = np.array(image_pil)
 
     elif effect_type == "scale":
