@@ -504,13 +504,17 @@ def apply_effect(image, effect, resources_dirname):
         effect_layer = render_layer(layer, resources_dirname)
         # trim in case the layer type doesn't respect width and height
         effect_layer = effect_layer[0:layer["height"], 0:layer["width"], :]
+        print(effect_layer.shape, effect_layer.dtype)
         effect_layer[:, :, 3] = image[:, :, 3]
-        image_pil = Image.fromarray(image)
-        image_pil.alpha_composite(Image.fromarray(effect_layer))
-        # I think what I want is to just return effect_layer and not do the above composite.
-        # could be wrong.
+        effect_layer[effect_layer[:, :, 3] == 0, 0:3] = (255, 255, 255)
 
-        image = np.array(image_pil)
+        cv2.imwrite("text_before_comp.png", image)
+
+        # image_pil = Image.fromarray(image)
+        # image_pil.alpha_composite(Image.fromarray(effect_layer))
+        # image = np.array(image_pil)
+
+        image = np.array(effect_layer)
 
     elif effect_type == "scale":
         x_scale = effect.get("x", 1.0)
