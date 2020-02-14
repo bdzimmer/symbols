@@ -123,9 +123,7 @@ def assemble_group(
         if border_x > 0 or border_y > 0:
             # if we added stroke to a font, shrink the actual amount we
             # are expanding the border by to compensate for the increased size
-
             stroke_width = layer.get("stroke_width", 0)
-
             if layer["type"] == "text" and stroke_width > 0:
                 layer_image = expand_border(
                     layer_image, border_x - stroke_width, border_y - stroke_width)
@@ -176,6 +174,11 @@ def assemble_group(
 
         image_pil = Image.fromarray(layer_image_trimmed)
         # res.paste(image_pil, (layer_x - border_x, layer_y - border_y), image_pil)
+        # print(
+        #     "compositing",
+        #     image_pil.size,
+        #     "onto", res.size,
+        #     "at", (layer_x - border_x, layer_y - border_y))
         res.alpha_composite(image_pil, (layer_x - border_x, layer_y - border_y))
 
         if save_total:
@@ -388,12 +391,18 @@ def render_layer(layer, resources_dirname):
 
     elif layer_type == "group":
         sub_layers = layer["layers"]
-        width = layer["width"]
-        height = layer["height"]
+        width = layer.get("width")
+        height = layer.get("height")
 
         image = assemble_group(
             sub_layers, width, height, resources_dirname, True,
             False, False, None, None)
+
+    elif layer_type == "empty":
+        height = layer.get("height")
+        width = layer.get("width")
+        image = np.ones((height, width, 4), dtype=np.uint8) * 255
+        image[:, :, 3] = 0
 
     else:
         image = None
@@ -489,6 +498,7 @@ def apply_effect(image, effect, resources_dirname):
         edge = cv2.GaussianBlur(edge, (blur_size, blur_size), 0)
         color = np.array(color, dtype=np.ubyte)
         glow = np.tile(np.reshape(color, (1, 1, 3)), (image.shape[0], image.shape[1], 1))
+        # blurred edge becomes opacity
         glow = np.concatenate((glow, np.expand_dims(edge, axis=2)), axis=2)
         glow = Image.fromarray(glow)
         if not only:
@@ -504,11 +514,11 @@ def apply_effect(image, effect, resources_dirname):
         effect_layer = render_layer(layer, resources_dirname)
         # trim in case the layer type doesn't respect width and height
         effect_layer = effect_layer[0:layer["height"], 0:layer["width"], :]
-        print(effect_layer.shape, effect_layer.dtype)
         effect_layer[:, :, 3] = image[:, :, 3]
         effect_layer[effect_layer[:, :, 3] == 0, 0:3] = (255, 255, 255)
 
-        cv2.imwrite("text_before_comp.png", image)
+        # print(effect_layer.shape, effect_layer.dtype)
+        # cv2.imwrite("text_before_comp.png", image)
 
         # image_pil = Image.fromarray(image)
         # image_pil.alpha_composite(Image.fromarray(effect_layer))
