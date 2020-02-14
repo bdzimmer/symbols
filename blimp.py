@@ -117,18 +117,7 @@ def assemble_group(
 
         # ~~~~ expand borders
 
-        border_x = layer.get("border_x", 0)
-        border_y = layer.get("border_y", 0)
-
-        if border_x > 0 or border_y > 0:
-            # if we added stroke to a font, shrink the actual amount we
-            # are expanding the border by to compensate for the increased size
-            stroke_width = layer.get("stroke_width", 0)
-            if layer["type"] == "text" and stroke_width > 0:
-                layer_image = expand_border(
-                    layer_image, border_x - stroke_width, border_y - stroke_width)
-            else:
-                layer_image = expand_border(layer_image, border_x, border_y)
+        layer_image, border_x, border_y = expand_border_layer(layer_image, layer)
 
         # ~~~~ apply effects
 
@@ -140,6 +129,7 @@ def assemble_group(
         mask_layer = layer.get("mask", None)
         if mask_layer is not None:
             mask_layer_image = render_layer(mask_layer, resources_dirname)
+            mask_layer_image, _, _ = expand_border_layer(mask_layer_image, mask_layer)
             layer_image[:, :, 3] = mask_layer_image[:, :, 3]
 
         # ~~~~ calculate position and trim
@@ -512,6 +502,7 @@ def apply_effect(image, effect, resources_dirname):
         layer["width"] = layer.get("width", image.shape[1])
         layer["height"] = layer.get("height", image.shape[0])
         effect_layer = render_layer(layer, resources_dirname)
+        effect_layer, _, _ = expand_border_layer(effect_layer, layer)
         # trim in case the layer type doesn't respect width and height
         effect_layer = effect_layer[0:layer["height"], 0:layer["width"], :]
         effect_layer[:, :, 3] = image[:, :, 3]
@@ -536,6 +527,25 @@ def apply_effect(image, effect, resources_dirname):
         print("\tunrecognized effect type '" + str(effect_type) + "'")
 
     return image
+
+
+def expand_border_layer(layer_image, layer):
+    """expand image borders with special layer logic"""
+
+    border_x = layer.get("border_x", 0)
+    border_y = layer.get("border_y", 0)
+
+    if border_x > 0 or border_y > 0:
+        # if we added stroke to a font, shrink the actual amount we
+        # are expanding the border by to compensate for the increased size
+        stroke_width = layer.get("stroke_width", 0)
+        if layer["type"] == "text" and stroke_width > 0:
+            layer_image = expand_border(
+                layer_image, border_x - stroke_width, border_y - stroke_width)
+        else:
+            layer_image = expand_border(layer_image, border_x, border_y)
+
+    return layer_image, border_x, border_y
 
 
 def expand_border(image, border_x, border_y):

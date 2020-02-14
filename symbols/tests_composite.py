@@ -61,14 +61,9 @@ class TestsComposite(unittest.TestCase):
 
         # ~~~~ example 1: text with double-sided glow
 
-        # one problem with the repeated text layer is if you use a "group" layer,
-        # you need to know the size...hmmmm...
-
         # Also note, due to the way that borders are handled, these layers should line
         # up automatically no matter which size stroke is defined on each.
         # Not sure how borders factor in.
-
-        # WIP
 
         layers_text = [
             {
@@ -96,6 +91,11 @@ class TestsComposite(unittest.TestCase):
         if DEBUG:
             cv2.imwrite("text_1.png", im_text)
             cv2.imwrite("comp_1.png", im_comp)
+
+        # ~~~~ example 2: text with inner glow
+
+        # I thought this would be straightforward with mask / mask_onto,
+        # but I was wrong. A project for another time.
 
         # ~~~~ example 3: masked text with outer glow
 
