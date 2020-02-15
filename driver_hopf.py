@@ -12,7 +12,7 @@ import os
 import numpy as np
 import cv2
 
-from symbols import util, transforms
+from symbols import effects, hopf, transforms, util
 
 
 def main():
@@ -20,157 +20,197 @@ def main():
 
     width = 800
     height = 800
-
-    output_dirname = "hopf_" + datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = output_dirname + ".mp4"
-
     fps = 30
+    color = (50, 0, 200)  # (230, 230, 0)
+    line_width = 2        # 1
+    glow_size = 63
+    glow_strength = 2.0
+    n_points = 128        # number of points in each ring
 
-    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
+    animation = False
+
+    output_prefix = "hopf_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+
     # look down at origin from z = 5
     cam_trans = transforms.camera_transform(np.identity(3), np.array([0.0, 0.0, 4.0]))
     view_pos = np.array([0.0, 0.0, 200.0])
 
-    # ~~~ test with a circle
+    # 3D points in a flat circle in the XY plane
 
-    n_points = 128
+    circle_points = transforms.points_around_circle(n_points, 0.0, 1.0)
+    circle_points = np.array(circle_points)
+    circle_points = np.column_stack((circle_points, np.zeros(len(circle_points))))
+    circle_points = np.transpose(circle_points)
 
-    # 3D points
-    points = transforms.points_around_circle(n_points, 0.0, 1.0)
-    points = np.array(points)
-    points = np.column_stack((points, np.zeros(len(points))))
-    points = np.transpose(points)
+    fiber_points = circle_points
 
-    fiber_points = points
+    if not animation:
 
-    # render the animation
+        # for now, a hard-coded configuration
 
-    os.makedirs(output_dirname, exist_ok=True)
+        output_prefix = "hopf_20200215"
+        output_filename = output_prefix + ".png"
 
-    for frame_idx, angle in enumerate(np.linspace(0.0, 2.0 * np.pi, 360)):
-        print(frame_idx, angle)
+        base_points = circle_points[:, 20:24:2]
+
         canvas = np.zeros((height, width, 3), dtype=np.uint8)
 
-        rot = np.dot(
-            # util.rotate_x(angle)[0:3, 0:3],
-            util.rotation_y(0.5)[0:3, 0:3],
-            util.rotation_z(angle)[0:3, 0:3],
-        )
+        draw_fibration(
+            canvas,
+            base_points, fiber_points,
+            np.identity(4),
+            cam_trans, view_pos,
+            color, line_width)
 
-        base_points = np.dot(rot, points)[:, ::2]
+        cv2.imwrite(output_filename, canvas)
 
-        pts_0 = []
-        pts_1 = []
-        depths = []
-        colors = []
+    else:
 
-        for base_point_idx in range(base_points.shape[1]):
+        output_dirname = output_prefix
+        output_filename = output_dirname + ".mp4"
 
-            base_point = base_points[:, base_point_idx]
+        # render the animation
 
-            a, b, c = base_point
+        os.makedirs(output_dirname, exist_ok=True)
 
-            cos_theta = fiber_points[0, :]
-            sin_theta = fiber_points[1, :]
+        for frame_idx, angle in enumerate(np.linspace(0.0, 2.0 * np.pi, 360)):
+            print(frame_idx, angle)
 
-            fiber = 1.0 / np.sqrt(2.0 * (1.0 + c)) * np.row_stack([
-                (1.0 + c) * cos_theta,
-                a * sin_theta - b * cos_theta,
-                a * cos_theta + b * sin_theta,
-                (1.0 + c) * sin_theta
-            ])
+            canvas = np.zeros((height, width, 3), dtype=np.uint8)
 
-            w = fiber[0, :]
-            fiber_proj = np.row_stack([
-                fiber[1, :] / (1.0 - w),
-                fiber[2, :] / (1.0 - w),
-                fiber[3, :] / (1.0 - w),
-            ])
+            # rotate a circle to get a set of base points
 
-            # animation transformation
-            fiber_proj = transforms.transform(util.rotate_x(angle), fiber_proj)
+            rot = np.dot(
+                # util.rotate_x(angle)[0:3, 0:3],
+                util.rotation_y(0.5)[0:3, 0:3],
+                util.rotation_z(angle)[0:3, 0:3])
+            base_points = np.dot(rot, circle_points)[:, ::2]
 
-            # caluclate colors via normals
-            fiber_mean = np.mean(fiber_proj, axis=1, keepdims=True)
-            diffs = fiber_proj - fiber_mean
-            diffs_norm = diffs / np.linalg.norm(diffs, axis=0, keepdims=True)
-            vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
-            diffs_norm_dot = np.sum(diffs_norm * vec, axis=0, keepdims=True)
-            diffs_norm_dot = np.clip(diffs_norm_dot, 0.0, 1.0)
-            colors_fiber = np.array([230.0, 230.0, 0.0])[:, np.newaxis] * diffs_norm_dot
-            colors_fiber = np.array(colors_fiber, np.float)
-            colors.append(colors_fiber)
+            # draw the frame
 
-            # apply perspective transformation
-            fiber_proj_c = transforms.transform(cam_trans, fiber_proj)
-            fiber_proj_p = transforms.perspective(fiber_proj_c, view_pos)
-            # align and convert to int
-            # TODO: flip y properly
-            fiber_proj_p = np.array(fiber_proj_p + p_shift, dtype=np.int)
+            obj_trans = util.rotation_x(angle)
+            draw_fibration(
+                canvas,
+                base_points, fiber_points,
+                obj_trans,
+                cam_trans, view_pos,
+                color, line_width)
 
-            # stack lines and depths
-            point_idxs = list(range(fiber_proj_p.shape[1])) + [0]
-            point_0_idxs = point_idxs[0:-1]
-            point_1_idxs = point_idxs[1:]
+            # apply a glow effect
 
-            pts_0.append(fiber_proj_p[:, point_0_idxs])
-            pts_1.append(fiber_proj_p[:, point_1_idxs])
+            canvas = effects.glow(canvas, glow_size, glow_strength)
 
-            # TODO: there might be a better way to do this, like max?
-            # my gut says mean is better
-            depths_fiber = (fiber_proj_c[2, point_0_idxs] + fiber_proj_c[2, point_1_idxs]) * 0.5
-            depths.append(depths_fiber)
+            if False:
+                cv2.imshow("output", canvas)
+                # cv2.waitKey(-1)
+                cv2.waitKey(33)
+            else:
+                cv2.imwrite(os.path.join(output_dirname, str(frame_idx).rjust(5, "0") + ".png"), canvas)
 
-            # draw_polyline(canvas, fiber_proj_p, colors_fiber)
+        command = util.ffmpeg_command(output_dirname, output_filename, width, height, fps)
+        os.system(command)
 
-        # stack and draw all of them at once
 
-        pts_0 = np.concatenate(pts_0, axis=1)
-        pts_1 = np.concatenate(pts_1, axis=1)
-        colors = np.concatenate(colors, axis=1)
-        depths = np.concatenate(depths, axis=0)
+def draw_fibration(
+        canvas,
+        base_points, fiber_points,
+        obj_trans,                     # transform of object
+        cam_trans, view_pos,           # camera and viewer positions
+        color, line_width              # visual appearance
+        ):
 
-        # sort by depths
-        sorted_idxs = np.argsort(depths)
+    """draw the Hopf fibration for a set of base points and fiber points"""
 
-        for line_idx in sorted_idxs:  # range(pts_0.shape[1]):
+    # TODO: args for color
 
-            color = tuple(colors[:, line_idx])
-            pt_0 = tuple(pts_0[:, line_idx])
-            pt_1 = tuple(pts_1[:, line_idx])
+    color = np.array(color, dtype=np.float)[:, np.newaxis]
 
-            # print(pt_0, "->", pt_1)
+    height, width, _ = canvas.shape
+    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
 
-            if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface
-                cv2.line(
-                    canvas,
-                    pt_0,
-                    pt_1,
-                    color,
-                    1,
-                    cv2.LINE_AA)
+    pts_0 = []
+    pts_1 = []
+    depths = []
+    colors = []
 
-        # base_points_p = perspective(base_points, cam_trans, view_pos)
-        # base_points_p = np.array(base_points_p + p_shift, dtype=int)
-        # draw_polyline(canvas, base_points_p)
+    for base_point_idx in range(base_points.shape[1]):
+        base_point = base_points[:, base_point_idx]
 
-        from driver_symbols import image_filter
-        canvas = image_filter(canvas)
+        # fibration and stereographic projection
+        fiber = hopf.total_points(base_point, fiber_points)
+        fiber_proj = hopf.stereographic(fiber)
 
-        if False:
-            cv2.imshow("output", canvas)
-            # cv2.waitKey(-1)
-            cv2.waitKey(33)
-        else:
-            cv2.imwrite(os.path.join(output_dirname, str(frame_idx).rjust(5, "0") + ".png"), canvas)
+        # animation transformation
+        fiber_proj = transforms.transform(obj_trans, fiber_proj)
 
-    # TODO: replace with central definition of ffmpeg command in util
-    command = (
-        "ffmpeg -y -r " + str(fps) +
-        " -f image2 -s " + str(width) + "x" + str(height) +
-        " -i " + output_dirname + "/%05d.png " +
-        "-threads 2 -vcodec libx264 -crf 25 -pix_fmt yuv420p " + output_filename)
-    os.system(command)
+        # caluclate colors via normals
+        fiber_mean = np.mean(fiber_proj, axis=1, keepdims=True)
+        diffs = fiber_proj - fiber_mean
+        diffs_norm = diffs / np.linalg.norm(diffs, axis=0, keepdims=True)
+
+        # compare normals against z-axis (direction camera is pointing)
+        vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
+        diffs_norm_dot = np.sum(diffs_norm * vec, axis=0, keepdims=True)
+
+        # sort of backface culling effect (segments "facing" away invisible)
+        # color_scale = np.clip(diffs_norm_dot, 0.0, 1.0)
+
+        # clip may not be necessary here
+        color_scale = np.abs(diffs_norm_dot)
+        color_scale = np.clip(color_scale, 0.0, 1.0)
+
+        colors_fiber = color * color_scale
+        colors_fiber = np.array(colors_fiber, np.float)
+        colors.append(colors_fiber)
+
+        # apply perspective transformation
+        fiber_proj_c = transforms.transform(cam_trans, fiber_proj)
+        fiber_proj_p = transforms.perspective(fiber_proj_c, view_pos)
+        # align and convert to int
+        # TODO: flip y properly
+        fiber_proj_p = np.array(fiber_proj_p + p_shift, dtype=np.int)
+
+        # stack lines and depths
+        point_idxs = list(range(fiber_proj_p.shape[1])) + [0]
+        point_0_idxs = point_idxs[0:-1]
+        point_1_idxs = point_idxs[1:]
+
+        pts_0.append(fiber_proj_p[:, point_0_idxs])
+        pts_1.append(fiber_proj_p[:, point_1_idxs])
+
+        # TODO: there might be a better way to do this, like max?
+        # my gut says mean is better
+        depths_fiber = (fiber_proj_c[2, point_0_idxs] + fiber_proj_c[2, point_1_idxs]) * 0.5
+        depths.append(depths_fiber)
+
+        # draw_polyline(canvas, fiber_proj_p, colors_fiber)
+
+    # stack and draw all of them at once
+
+    pts_0 = np.concatenate(pts_0, axis=1)
+    pts_1 = np.concatenate(pts_1, axis=1)
+    colors = np.concatenate(colors, axis=1)
+    depths = np.concatenate(depths, axis=0)
+
+    # sort by depths
+    sorted_idxs = np.argsort(depths)
+
+    for line_idx in sorted_idxs:  # range(pts_0.shape[1]):
+
+        color = tuple(colors[:, line_idx])
+        pt_0 = tuple(pts_0[:, line_idx])
+        pt_1 = tuple(pts_1[:, line_idx])
+
+        # print(pt_0, "->", pt_1)
+
+        if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface culling
+            cv2.line(
+                canvas,
+                pt_0,
+                pt_1,
+                color,
+                line_width,
+                cv2.LINE_AA)
 
 
 if __name__ == "__main__":

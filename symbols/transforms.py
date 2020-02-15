@@ -7,7 +7,7 @@ Calculate and apply transforms.
 import numpy as np
 import cv2
 
-import symbols
+from symbols import symbols
 
 
 def transformation(rot, trans):
