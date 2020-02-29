@@ -11,12 +11,12 @@ import cv2
 import numpy as np
 from PIL import Image
 
-import blimp    # TODO: refactor and import library funcs instead
+from symbols import blimp    # TODO: refactor and import library funcs instead
 
 # reused stuff
 RESOURCES_DIRNAME = [
     "C:/Ben/Google Drive/art",
-    "/media/ben/Storage/Ben/Google Drive/art"][0]
+    "/media/ben/Storage/Ben/Google Drive/art"][1]
 
 DEBUG = True
 
@@ -33,6 +33,10 @@ class TestsComposite(unittest.TestCase):
             "bonnie-kittle-aQnyyf-4uZQ-unsplash.jpg")
 
         im_bg = cv2.imread(bg_filename)
+        if im_bg is None:
+            print("background image not found")
+            exit()
+
         im_bg = blimp.add_alpha(im_bg)
 
         # ~~~~ example 0: text with stroke
