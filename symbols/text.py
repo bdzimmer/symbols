@@ -62,8 +62,8 @@ def multiline(lines, offsets, font, line_height, image_width, image_height):
     # offsets = [offset(x, font) for x in lines]
     # sizes = [size(x, font) for x in lines]
 
-    for x in lines:
-        print(x)
+    # for x in lines:
+    #     print(x)
 
     # image_height = line_height * len(lines)
     # image_width = max_width
@@ -72,9 +72,12 @@ def multiline(lines, offsets, font, line_height, image_width, image_height):
     draw = ImageDraw.Draw(image)
 
     for idx, (line, off) in enumerate(zip(lines, offsets)):
-        off = offset(line, font)
+        off_curr = offset(line, font)
+        print(line, off)
         draw.text(
-            (0, idx * line_height - off[1]),  # TODO: offsets? probably not
+            (0 - off_curr[0] + off[0],
+             idx * line_height - off_curr[1] + off[1]),  # TODO: offsets? probably not
+            # (off[0], idx * line_height),
             line,
             font=font,
             fill="white")
@@ -132,15 +135,15 @@ def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_e
         im = multiline(
             lines_mod, offsets[0:len(lines_mod)], font, line_height, width_max, image_height)
 
-        im_mod = im_func(im)
-
         for _ in range(dup):
+            im_mod = im_func(im)
             cv2.imwrite(
                 os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
                 im_mod)
             idx_frame_out = idx_frame_out + 1
 
     for _ in range(dup_end):
+        im_mod = im_func(im)
         cv2.imwrite(
             os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
             im_mod)
