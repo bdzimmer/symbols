@@ -54,7 +54,7 @@ def wrap_text(text, font, width_max):
     return lines
 
 
-def multiline(lines, font, line_height, image_width, image_height):
+def multiline(lines, offsets, font, line_height, image_width, image_height):
     """draw multiline text"""
 
     # It doesn't seem like these are necessary for positioning
@@ -71,9 +71,10 @@ def multiline(lines, font, line_height, image_width, image_height):
     image = Image.new("L", (image_width, image_height), 0)
     draw = ImageDraw.Draw(image)
 
-    for idx, line in enumerate(lines):
+    for idx, (line, off) in enumerate(zip(lines, offsets)):
+        off = offset(line, font)
         draw.text(
-            (0, idx * line_height),  # TODO: offsets? probably not
+            (0, idx * line_height - off[1]),  # TODO: offsets? probably not
             line,
             font=font,
             fill="white")
@@ -97,16 +98,15 @@ def l_to_rgba(im_l, color):
     return solid_text_np
 
 
-def animate(lines, font, width_max, im_func):
+def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_end):
     """animate text"""
-
-    output_dirname = "text_scratch"
-    os.makedirs(output_dirname, exist_ok=True)
 
     line_lengths = [len(x) for x in lines]
     length_all = sum(line_lengths)
     line_height = font_line_height(font)
     image_height = line_height * len(lines)
+
+    idx_frame_out = 0
 
     for idx_frame in range(length_all):
 
@@ -130,12 +130,18 @@ def animate(lines, font, width_max, im_func):
         # TODO: test a case where one word is too long
 
         im = multiline(
-            lines_mod, font, line_height, width_max, image_height)
+            lines_mod, offsets[0:len(lines_mod)], font, line_height, width_max, image_height)
 
         im_mod = im_func(im)
 
+        for _ in range(dup):
+            cv2.imwrite(
+                os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
+                im_mod)
+            idx_frame_out = idx_frame_out + 1
+
+    for _ in range(dup_end):
         cv2.imwrite(
-            os.path.join(
-                output_dirname,
-                str(idx_frame).rjust(5, "0") + ".png"),
+            os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
             im_mod)
+        idx_frame_out = idx_frame_out + 1

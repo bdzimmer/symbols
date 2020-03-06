@@ -54,4 +54,9 @@ class TestsText(unittest.TestCase):
             return x
 
         if True:
-            text.animate(lines[0:2], font, width_max, im_func)
+            import os
+            output_dirname = "text_scratch"
+            os.makedirs(output_dirname, exist_ok=True)
+
+            offsets = [text.offset(x, font) for x in lines]
+            text.animate(output_dirname, lines[0:2], offsets, font, width_max, im_func, 1, 0)
