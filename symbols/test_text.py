@@ -140,7 +140,6 @@ class TestsText(unittest.TestCase):
 
             start_x = start_x + size_x + 50
 
-
         if DEBUG:
             os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
             output_filename = os.path.join(SCRATCH_DIRNAME, "align_0.png")

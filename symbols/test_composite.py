@@ -16,7 +16,7 @@ from symbols import blimp    # TODO: refactor and import library funcs instead
 # reused stuff
 RESOURCES_DIRNAME = [
     "C:/Ben/Google Drive/art",
-    "/media/ben/Storage/Ben/Google Drive/art"][1]
+    "/media/ben/Storage/Ben/Google Drive/art"][0]
 
 DEBUG = True
 
