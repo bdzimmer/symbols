@@ -8,7 +8,6 @@ import unittest
 
 import os
 
-import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -73,33 +72,76 @@ class TestsText(unittest.TestCase):
         # understand how all of the measurements work. Don't want
         # to be wondering if line height is correct, etc.
 
+        # 2020-03-14: Honestly everything here looks like I was expecting.
+        # Maybe just a typo in multiline somewhere.
+
         font = blimp.load_font("Cinzel-Regular.ttf", 64)
 
-        im_bg = Image.new("RGBA", (800, 400), (0, 0, 0))
+        im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
         draw = ImageDraw.Draw(im_bg)
 
         # a couple of tests with the raw text drawing functions,
         # none of my own wrappers (other than for methods)
 
-        text_0 = "April"
-        text_1 = "2020"
-        texts_all = [text_0, text_1]
+        texts_all = [
+            "April",
+            "2020",
+            "April 2020",
+            "april",
+            "april 2020"
+        ]
 
         start_x = 50
         start_y = 50
 
         for idx, text_cur in enumerate(texts_all):
-            x_pos = start_x + idx * 200
+
+            x_pos = start_x
+            y_pos = start_y
+
             draw.text(
                 (x_pos, start_y),
                 text_cur,
                 font=font,
                 fill=(255, 255, 255))
-            print("size:       ", text.size(text_cur, font))
-            print("offset:     ", text.offset(text_cur), font)
-            print("line height:", text.font_line_height(font))
+
+            size_x, size_y = text.size(text_cur, font)
+            offset_x, offset_y = text.offset(text_cur, font)
+            line_height = text.font_line_height(font)
+
+            # draw various horizontal lines
+
+            def draw_line(points, color):
+                draw.line(
+                    xy=[(x_pos + x, y_pos + y) for x, y in points],
+                    fill=color,
+                    width=1)
+
+            # red at y=0 and y=line_height
+
+            draw_line(
+                ((0, 0), (size_x, 0)),
+                "red")
+
+            draw_line(
+                ((0, line_height), (size_x, line_height)),
+                "red")
+
+            # green at offset
+            draw_line(
+                ((offset_x, offset_y), (offset_x + size_x, offset_y)),
+                "green")
+
+            print("text:       ", "'" + text_cur + "'")
+            print("size:       ", size_x, size_y)
+            print("offset:     ", offset_x, offset_y)
+            print("line height:", line_height)
+            print()
+
+            start_x = start_x + size_x + 50
+
 
         if DEBUG:
             os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
             output_filename = os.path.join(SCRATCH_DIRNAME, "align_0.png")
-            cv2.imwrite(output_filename, np.array(im_bg))
+            im_bg.save(output_filename)
