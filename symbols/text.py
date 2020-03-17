@@ -74,10 +74,22 @@ def multiline(lines, offsets, font, line_height, image_width, image_height):
     for idx, (line, off) in enumerate(zip(lines, offsets)):
         off_curr = offset(line, font)
         print(line, off)
+
+        if False:
+            # this seemed to be necessary for some lines that jumped up
+            # and down a very small amount (like 1 pixel) but is definitely
+            # wrong for text where the size / offset varies
+            # perhaps the problem was that I was using size at some point
+            # that should be ignored.
+            pos_x = 0 - off_curr[0] + off[0]
+            pos_y = idx * line_height - off_curr[1] + off[1]
+        else:
+            # it seems like the offsets or sizes should not be necessary
+            pos_x = 0
+            pos_y = idx * line_height
+
         draw.text(
-            (0 - off_curr[0] + off[0],
-             idx * line_height - off_curr[1] + off[1]),  # TODO: offsets? probably not
-            # (off[0], idx * line_height),
+            (pos_x, pos_y),
             line,
             font=font,
             fill="white")

@@ -34,13 +34,13 @@ class TestsText(unittest.TestCase):
         # font = blimp.load_font("times.ttf", 16)
 
         message = (
-                "Summerfield foresaw none of this. But he was not swept along " +
-                "by the zeitgiest of Xanthe, as his detractors diminish him. He " +
-                "created the political movement that culminated in the Battle of " +
-                "Concord and the end of the War on Mars. Four hundred years later, " +
-                "the time is ripe for a new movement. But we cannot trust fate to " +
-                "bring us another prophet like him. We all must be " +
-                "prepared--individually--to act decisively as he did.")
+            "Summerfield foresaw none of this. But he was not swept along " +
+            "by the zeitgiest of Xanthe, as his detractors diminish him. He " +
+            "created the political movement that culminated in the Battle of " +
+            "Concord and the end of the War on Mars. Four hundred years later, " +
+            "the time is ripe for a new movement. But we cannot trust fate to " +
+            "bring us another prophet like him. We all must be " +
+            "prepared--individually--to act decisively as he did.")
 
         width_max = 480
         lines = text.wrap_text(message, font, width_max)
@@ -108,6 +108,7 @@ class TestsText(unittest.TestCase):
             size_x, size_y = text.size(text_cur, font)
             offset_x, offset_y = text.offset(text_cur, font)
             line_height = text.font_line_height(font)
+            ascent, descent = font.getmetrics()
 
             # draw various horizontal lines
 
@@ -118,7 +119,6 @@ class TestsText(unittest.TestCase):
                     width=1)
 
             # red at y=0 and y=line_height
-
             draw_line(
                 ((0, 0), (size_x, 0)),
                 "red")
@@ -131,6 +131,13 @@ class TestsText(unittest.TestCase):
             draw_line(
                 ((offset_x, offset_y), (offset_x + size_x, offset_y)),
                 "green")
+
+            # blue at base of text
+            # This should be constant since it only depends on the font,
+            # not the text being drawn.
+            draw_line(
+                ((0, ascent), (size_x, ascent)),
+                "blue")
 
             print("text:       ", "'" + text_cur + "'")
             print("size:       ", size_x, size_y)
