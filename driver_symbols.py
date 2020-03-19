@@ -13,56 +13,8 @@ import random
 import cv2
 import numpy as np
 
-from symbols import effects, func, symbols
+from symbols import effects, symbols, draw
 from symbols.symbols import TAU
-
-
-def add(x, y):
-    """add point tuples"""
-    return x[0] + y[0], x[1] + y[1]
-
-
-def to_int(x):
-    """convert to integers"""
-    return int(x[0]), int(x[1])
-
-
-def line_frac(line, frac):
-    """transform a line into a fraction of a line"""
-    y_diff = line.end[1] - line.start[1]
-    x_diff = line.end[0] - line.start[0]
-    new_end = to_int(add(line.start, (frac * x_diff, frac * y_diff)))
-    return symbols.Line(line.start, new_end, line.color, line.thickness)
-
-
-def draw_line_cv(im, line):
-    """draw a line on an image using OpenCV"""
-    cv2.line(im, line.start, line.end, line.color, line.thickness, cv2.LINE_AA)
-
-
-def draw_circle_cv(im, circle, frac):
-    """draw a circle on an image using OpenCV"""
-
-    # TODO: this seems to have some issues when frac = 0.0
-
-    end_angle = frac * (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU
-
-    cv2.ellipse(
-        im, circle.center, (circle.radius, circle.radius),
-        circle.start_angle * 360.0 / symbols.TAU,
-        0.0,
-        end_angle,
-        circle.color,
-        circle.thickness)
-
-
-def points_around_circle(n_points, start, radius, center):
-    return [
-        func.apply(
-            symbols.circle_point(x * TAU / n_points + start, radius),
-            lambda p: add(p, center),
-            to_int)
-        for x in range(n_points)]
 
 
 def image_filter(im):
@@ -96,7 +48,7 @@ def main():
 
     if symbol_name == "seal":
 
-        circle_points = points_around_circle(7, TAU / 4.0, 300.0, (400, 400))
+        circle_points = symbols.points_around_circle(7, TAU / 4.0, 300.0, (400, 400))
 
         segment_idxs = [(x * 3) % 7 for x in list(range(7)) + [0]]
         segment_idxs = list(zip(segment_idxs[:-1], segment_idxs[1:]))
@@ -106,7 +58,7 @@ def main():
             for x in segment_idxs]
 
         half_circle = symbols.Circle(
-            to_int((width / 2, height / 2)),
+            (width // 2, height // 2),
             300,
             TAU * 0.75,
             TAU * 0.25,
@@ -115,7 +67,7 @@ def main():
         )
 
         half_circle_2 = symbols.Circle(
-            to_int((width / 2, height / 2)),
+            (width // 2, height // 2),
             300,
             TAU * 1.25,
             TAU * 0.75,
@@ -137,8 +89,8 @@ def main():
         color = (200, 200, 0)
         center = (400, 300)
 
-        triangle_points = points_around_circle(3, TAU * 0.25, 400.0, center)
-        triangle_points_opp = points_around_circle(3, TAU * 0.25, -200.0, center)
+        triangle_points = symbols.points_around_circle(3, TAU * 0.25, 400.0, center)
+        triangle_points_opp = symbols.points_around_circle(3, TAU * 0.25, -200.0, center)
 
         segment_idxs = [0, 1, 2, 0]
         segment_idxs = list(zip(segment_idxs[:-1], segment_idxs[1:]))
@@ -195,12 +147,12 @@ def main():
             if isinstance(prim, symbols.Line):
                 # assuming AnimDuration for now
                 frac = np.clip(float(time - x.time) / x.anim.head_duration, 0.0, 1.0)
-                lf = line_frac(prim, frac)
-                draw_line_cv(canvas, lf)
+                lf = symbols.line_frac(prim, frac)
+                draw.draw_line_cv(canvas, lf)
             elif isinstance(prim, symbols.Circle):
                 # assuming AnimDuration for now
                 frac = np.clip(float(time - x.time) / x.anim.head_duration, 0.0, 1.0)
-                draw_circle_cv(canvas, prim, frac)
+                draw.draw_circle_cv(canvas, prim, frac)
 
         canvas = image_filter(canvas)
 

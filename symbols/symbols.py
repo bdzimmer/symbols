@@ -7,6 +7,8 @@ S Y M B O L S
 import attr
 import numpy as np
 
+from symbols import func
+
 TAU = 2.0 * np.pi
 
 
@@ -58,11 +60,43 @@ class TimedAnim:
     time = attr.ib()
 
 
+# ~~~~ utilities
+
 def circle_point(angle, radius):
     """get a point on a circle"""
     x = radius * np.cos(angle)
     y = radius * np.sin(angle)
-    return (x, y)
+    return x, y
+
+
+def add(x, y):
+    """add point tuples"""
+    return x[0] + y[0], x[1] + y[1]
+
+
+def to_int(x):
+    """convert to integers"""
+    return int(x[0]), int(x[1])
+
+
+def points_around_circle(n_points, start, radius, center):
+    return [
+        func.apply(
+            circle_point(x * TAU / n_points + start, radius),
+            lambda p: add(p, center),
+            to_int  # TODO: get rid of this eventually
+        )
+        for x in range(n_points)]
+
+
+def line_frac(line, frac):
+    """transform a line into a fraction of a line"""
+    y_diff = line.end[1] - line.start[1]
+    x_diff = line.end[0] - line.start[0]
+    new_end = to_int(add(line.start, (frac * x_diff, frac * y_diff)))
+    return Line(line.start, new_end, line.color, line.thickness)
+
+
 
 
 # ~~~~ functions for constructing animations ~~~~
@@ -101,6 +135,7 @@ def find_starts(x, start_time):
     # TODO: for velocity, calculate time based on pen travel distance
 
 
+# TODO: this has some issues with returns
 def flatten(x):
     if isinstance(x, tuple):
         return [z for y in x for z in flatten(y)]
