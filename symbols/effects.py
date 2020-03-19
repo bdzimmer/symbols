@@ -8,6 +8,7 @@ Image effects and related utilities.
 
 import cv2
 import numpy as np
+from PIL import Image
 
 
 def I(func):
@@ -35,7 +36,7 @@ class C:
 
 
 def grid(im):
-    """grid / CRT like effects"""
+    """grid / CRT like effect"""
     im = np.copy(im)
 
     # scanlines
@@ -51,3 +52,15 @@ def glow(im, size, factor):
     """glow effect"""
     blurred = np.clip(cv2.GaussianBlur(im, (size, size), 0) * factor, 0, 255)
     return np.maximum(im, blurred)
+
+
+def glow_alpha(im, size, factor):
+    """glow effect that handles alpha transparency"""
+    blurred = np.clip(cv2.GaussianBlur(im, (size, size), 0) * factor, 0, 255)
+
+    # alpha-composite instead of simple maximum
+    # return np.maximum(im, blurred)
+    return np.array(Image.alpha_composite(
+        Image.fromarray(np.array(im, dtype=np.uint8)),
+        Image.fromarray(np.array(blurred, dtype=np.uint8))
+    ))
