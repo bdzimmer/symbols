@@ -66,12 +66,20 @@ class TestsText(unittest.TestCase):
     def test_alignment(self):
         """Draw examples for debugging text alignment issues."""
 
-        font = blimp.load_font("Cinzel-Regular.ttf", 64)
+        font = blimp.load_font("Cinzel-Regular.ttf", 48)  # 64)
 
         im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
 
-        # a couple of tests with the raw text drawing functions,
-        # none of my own wrappers (other than for methods)
+        # 2020-03-22
+
+        # These samples demonstrate a one pixel shift off the baseline
+        # using Cinzel Regular size 48.
+
+        # The shift happens on the first zero of 2020, and all of the
+        # glyphs shift upward.
+
+        # The shift does not necessarily happen for other font sizes,
+        # such as 49 and 64.
 
         texts_all = [
             "April",
@@ -82,6 +90,7 @@ class TestsText(unittest.TestCase):
             "a",
             "ap",
             "apr",
+            "apri",
             "april",
             "april ",
             "april 2",
