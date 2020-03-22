@@ -55,44 +55,29 @@ def wrap_text(text, font, width_max):
 
 
 def multiline(lines, offsets, font, line_height, image_width, image_height):
-    """draw multiline text"""
-
-    # It doesn't seem like these are necessary for positioning
-    # the lines of text properly.
-    # offsets = [offset(x, font) for x in lines]
-    # sizes = [size(x, font) for x in lines]
-
-    # for x in lines:
-    #     print(x)
-
-    # image_height = line_height * len(lines)
-    # image_width = max_width
+    """draw multiline text using PIL ImageDraw"""
 
     image = Image.new("L", (image_width, image_height), 0)
     draw = ImageDraw.Draw(image)
 
     for idx, (line, off) in enumerate(zip(lines, offsets)):
-        off_curr = offset(line, font)
         print(line, off)
 
-        if False:
-            # this seemed to be necessary for some lines that jumped up
-            # and down a very small amount (like 1 pixel) but is definitely
-            # wrong for text where the size / offset varies
-            # perhaps the problem was that I was using size at some point
-            # that should be ignored.
-            pos_x = 0 - off_curr[0] + off[0]
-            pos_y = idx * line_height - off_curr[1] + off[1]
-        else:
-            # it seems like the offsets or sizes should not be necessary
-            pos_x = 0
-            pos_y = idx * line_height
+        # this seemed to be necessary for some lines that jumped up
+        # and down a very small amount (like 1 pixel) but is definitely
+        # wrong for text where the size / offset varies
+        # perhaps the problem was that I was using size at some point
+        # that should be ignored.
 
-        draw.text(
-            (pos_x, pos_y),
-            line,
-            font=font,
-            fill="white")
+        # off_curr = offset(line, font)
+        # pos_x = 0 - off_curr[0] + off[0]
+        # pos_y = idx * line_height - off_curr[1] + off[1]
+
+        # it seems like the offsets or sizes should not be necessary
+        pos_x = 0
+        pos_y = idx * line_height
+
+        draw.text((pos_x, pos_y), line, font=font, fill="white")
 
     return np.array(image)
 

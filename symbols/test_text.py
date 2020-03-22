@@ -64,21 +64,11 @@ class TestsText(unittest.TestCase):
             text.animate(SCRATCH_DIRNAME, lines[0:2], offsets, font, width_max, im_func, 1, 0)
 
     def test_alignment(self):
-        """figure out what's going on with text alignment"""
-
-        # 2020-03-13: I thought I had figured out how alignment
-        # and offsets work, but I'm still seeing some popping in the
-        # multiline stuff. Need to do some tests to precisely
-        # understand how all of the measurements work. Don't want
-        # to be wondering if line height is correct, etc.
-
-        # 2020-03-14: Honestly everything here looks like I was expecting.
-        # Maybe just a typo in multiline somewhere.
+        """Draw examples for debugging text alignment issues."""
 
         font = blimp.load_font("Cinzel-Regular.ttf", 64)
 
         im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
-        draw = ImageDraw.Draw(im_bg)
 
         # a couple of tests with the raw text drawing functions,
         # none of my own wrappers (other than for methods)
@@ -88,66 +78,100 @@ class TestsText(unittest.TestCase):
             "2020",
             "April 2020",
             "april",
+            "april 2020",
+            "a",
+            "ap",
+            "apr",
+            "april",
+            "april ",
+            "april 2",
+            "april 20",
+            "april 202",
             "april 2020"
         ]
 
         start_x = 50
         start_y = 50
+        pos_x = start_x
+        pos_y = start_y
 
         for idx, text_cur in enumerate(texts_all):
+            # large image
+            size_x, size_y = _draw_text_with_info(im_bg, text_cur, font, pos_x, pos_y)
+            pos_x = pos_x + size_x + 50
 
-            x_pos = start_x
-            y_pos = start_y
+            # small images
+            im = Image.new("RGBA", (480, 320), (0, 0, 0))
+            _ = _draw_text_with_info(im, text_cur, font, start_x, start_y)
+            _debug_save_image(im, f"align_{idx}.png")
 
-            draw.text(
-                (x_pos, start_y),
-                text_cur,
-                font=font,
-                fill=(255, 255, 255))
+        _debug_save_image(im_bg, "align_all.png")
 
-            size_x, size_y = text.size(text_cur, font)
-            offset_x, offset_y = text.offset(text_cur, font)
-            line_height = text.font_line_height(font)
-            ascent, descent = font.getmetrics()
 
-            # draw various horizontal lines
+def _debug_save_image(im: Image, filename: str):
+    """save an image"""
+    if DEBUG:
+        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
+        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
+        im.save(output_filename)
 
-            def draw_line(points, color):
-                draw.line(
-                    xy=[(x_pos + x, y_pos + y) for x, y in points],
-                    fill=color,
-                    width=1)
 
-            # red at y=0 and y=line_height
-            draw_line(
-                ((0, 0), (size_x, 0)),
-                "red")
+def _draw_text_with_info(im, text_cur, font, pos_x, pos_y):
+    """draw text with info lines for debugging"""
 
-            draw_line(
-                ((0, line_height), (size_x, line_height)),
-                "red")
+    # ~~~
 
-            # green at offset
-            draw_line(
-                ((offset_x, offset_y), (offset_x + size_x, offset_y)),
-                "green")
+    # TODO: eventually abstract this stuff out for testing other text libs
 
-            # blue at base of text
-            # This should be constant since it only depends on the font,
-            # not the text being drawn.
-            draw_line(
-                ((0, ascent), (size_x, ascent)),
-                "blue")
+    draw = ImageDraw.Draw(im)
 
-            print("text:       ", "'" + text_cur + "'")
-            print("size:       ", size_x, size_y)
-            print("offset:     ", offset_x, offset_y)
-            print("line height:", line_height)
-            print()
+    draw.text(
+        (pos_x, pos_y),
+        text_cur,
+        font=font,
+        fill=(255, 255, 255))
 
-            start_x = start_x + size_x + 50
+    size_x, size_y = text.size(text_cur, font)
+    offset_x, offset_y = text.offset(text_cur, font)
+    line_height = text.font_line_height(font)
+    ascent, descent = font.getmetrics()
 
-        if DEBUG:
-            os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-            output_filename = os.path.join(SCRATCH_DIRNAME, "align_0.png")
-            im_bg.save(output_filename)
+    # ~~~
+
+    # draw various horizontal lines
+
+    def draw_line(points, color):
+        """draw line with offset of pos_x, pos_y"""
+        draw.line(
+            xy=[(pos_x + x, pos_y + y) for x, y in points],
+            fill=color,
+            width=1)
+
+    # red at y=0 and y=line_height
+    draw_line(
+        ((0, 0), (size_x, 0)),
+        "red")
+
+    draw_line(
+        ((0, line_height), (size_x, line_height)),
+        "red")
+
+    # green at offset
+    draw_line(
+        ((offset_x, offset_y), (offset_x + size_x, offset_y)),
+        "green")
+
+    # blue at base of text
+    # This should definitely be constant since it only depends
+    # on the font, not the text being drawn.
+    draw_line(
+        ((0, ascent), (size_x, ascent)),
+        "blue")
+
+    print("text:       ", "'" + text_cur + "'")
+    print("size:       ", size_x, size_y)
+    print("offset:     ", offset_x, offset_y)
+    print("line height:", line_height)
+    print()
+
+    return size_x, size_y
