@@ -113,15 +113,15 @@ def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_e
         print(idx_frame + 1, "/", length_all)
 
         # calculate lines_mod
-        # todo: include extra "characters" for line ends
+        # TODO:
+        # TODO: optionally include extra "characters" for line ends
         lines_mod = []
         chars_total = 0
         for idx, line in enumerate(lines):
-            if chars_total + line_lengths[idx] < idx_frame:
+            if idx_frame >= chars_total + line_lengths[idx]:
                 lines_mod.append(line)
                 chars_total = chars_total + len(line)
             else:
-                # TODO: not sure this is right
                 partial = line[0:(idx_frame - chars_total + 1)]
                 lines_mod.append(partial)
                 print(partial)
