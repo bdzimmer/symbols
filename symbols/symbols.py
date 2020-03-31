@@ -97,8 +97,6 @@ def line_frac(line, frac):
     return Line(line.start, new_end, line.color, line.thickness)
 
 
-
-
 # ~~~~ functions for constructing animations ~~~~
 
 def find_duration(x):
