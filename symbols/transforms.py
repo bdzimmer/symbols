@@ -18,6 +18,11 @@ def transformation(rot, trans):
     return res
 
 
+def sep_rotation(transf):
+    """extract the rotation from a rigid transformation"""
+    return transf[0:3, 0:3]
+
+
 def transform(mat, points):
     """apply a rigid transformation"""
     return np.dot(mat[0:3, 0:3], points) + mat[0:3, 3:4]
