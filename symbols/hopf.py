@@ -47,16 +47,15 @@ def draw_fibration(
         base_points, fiber_points,
         obj_trans,                     # transform of object
         cam_trans, view_pos,           # camera and viewer positions
-        color, line_width              # visual appearance
+        color, line_width,             # visual appearance
+        decoration_func,               # generate additional stuff on fibers
+        decoration_only
         ):
 
     """draw the Hopf fibration for a set of base points and fiber points"""
 
-    # TODO: args for color
-
-    rings = True
-
     color = np.array(color, dtype=np.float)[:, np.newaxis]
+    obj_rot = transforms.sep_rotation(obj_trans)
 
     height, width, _ = canvas.shape
     p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
@@ -78,7 +77,12 @@ def draw_fibration(
         point_idxs_0 = point_idxs[0:-1]
         point_idxs_1 = point_idxs[1:]
 
-        if rings:
+        # find normals
+        fiber_mean = np.mean(fiber_proj, axis=1, keepdims=True)
+        diffs = fiber_proj - fiber_mean
+        fiber_proj_norms = diffs / np.linalg.norm(diffs, axis=0, keepdims=True)
+
+        if decoration_func is not None:
             n_fiber_proj = fiber_proj.shape[1]
 
             # find z-axis of disks
@@ -93,23 +97,30 @@ def draw_fibration(
 
             # was 2.7 sec
 
-            start_idx = fiber_proj.shape[1]
+            if decoration_only:
+                start_idx = 0
+            else:
+                start_idx = fiber_proj.shape[1]
 
             # append a disk for each line segment
 
             point_idxs_0_addl = []
             point_idxs_1_addl = []
             points_addl = []
+            norms_addl = []
 
             for idx in range(n_fiber_proj):
-                disk_points, disk_idxs_0, disk_idxs_1 = disk_segments(
-                    mean_to_centers[:, idx], diffs[:, idx], 0.1, 16)
+                disk_points, disk_idxs_0, disk_idxs_1, disk_seg_norms = decoration_func(
+                    mean_to_centers[:, idx],
+                    diffs[:, idx])
 
                 disk_points = disk_points.T + centers[:, idx:(idx + 1)]
+                disk_seg_norms = disk_seg_norms.T
 
                 point_idxs_0_addl.append(disk_idxs_0 + start_idx)
                 point_idxs_1_addl.append(disk_idxs_1 + start_idx)
                 points_addl.append(disk_points)
+                norms_addl.append(disk_seg_norms)
 
                 start_idx = start_idx + disk_points.shape[1]
 
@@ -117,10 +128,18 @@ def draw_fibration(
             point_idxs_0_addl = np.concatenate(point_idxs_0_addl, axis=0)
             point_idxs_1_addl = np.concatenate(point_idxs_1_addl, axis=0)
             points_addl = np.concatenate(points_addl, axis=1)
+            norms_addl = np.concatenate(norms_addl, axis=1)
 
-            point_idxs_0 = np.concatenate((point_idxs_0, point_idxs_0_addl), axis=0)
-            point_idxs_1 = np.concatenate((point_idxs_1, point_idxs_1_addl), axis=0)
-            fiber_proj = np.concatenate((fiber_proj, points_addl), axis=1)
+            if not decoration_only:
+                point_idxs_0 = np.concatenate((point_idxs_0, point_idxs_0_addl), axis=0)
+                point_idxs_1 = np.concatenate((point_idxs_1, point_idxs_1_addl), axis=0)
+                fiber_proj = np.concatenate((fiber_proj, points_addl), axis=1)
+                fiber_proj_norms = np.concatenate((fiber_proj_norms, norms_addl), axis=1)
+            else:
+                point_idxs_0 = point_idxs_0_addl
+                point_idxs_1 = point_idxs_1_addl
+                fiber_proj = points_addl
+                fiber_proj_norms = norms_addl
 
             # # a quick test
             # if False:
@@ -138,22 +157,22 @@ def draw_fibration(
 
         # animation transformation
         fiber_proj = transforms.transform(obj_trans, fiber_proj)
-
-        # caluclate colors via normals
-        fiber_mean = np.mean(fiber_proj, axis=1, keepdims=True)
-        diffs = fiber_proj - fiber_mean
-        diffs_norm = diffs / np.linalg.norm(diffs, axis=0, keepdims=True)
+        fiber_proj_norms = np.dot(obj_rot, fiber_proj_norms)
 
         # compare normals against z-axis (direction camera is pointing)
+        # TODO: update for generic camera!!!
         vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
-        diffs_norm_dot = np.sum(diffs_norm * vec, axis=0, keepdims=True)
+        # TODO: why am I not using dot here???
+        norms_dot = np.sum(fiber_proj_norms * vec, axis=0, keepdims=True)
 
         # sort of backface culling effect (segments "facing" away invisible)
         # color_scale = np.clip(diffs_norm_dot, 0.0, 1.0)
 
         # clip may not be necessary here
-        color_scale = np.abs(diffs_norm_dot)
-        color_scale = np.clip(color_scale, 0.0, 1.0)
+        # TODO: make the below configurable (basicall backface culling)
+        color_scale = np.clip(norms_dot, 0.0, 1.0)
+        # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
+        color_scale = color_scale * color_scale
 
         colors_fiber = color * color_scale
         colors_fiber = np.array(colors_fiber, np.float)
@@ -204,6 +223,8 @@ def draw_fibration(
                 cv2.LINE_AA)
 
 
+# TODO: move this somewhere more generic
+
 def disk_segments(x_axis, z_axis, radius, n_points):
     """disk segments"""
     y_axis = np.cross(z_axis, x_axis)
@@ -222,4 +243,8 @@ def disk_segments(x_axis, z_axis, radius, n_points):
     idxs_0 = np.array(range_n)
     idxs_1 = np.array(range_n[1:] + [0])
 
-    return circle_points, idxs_0, idxs_1
+    centers = 0.5 * (circle_points[idxs_1, :] + circle_points[idxs_0, :])
+    normals = centers / np.linalg.norm(centers, axis=1, keepdims=True)
+
+    return circle_points, idxs_0, idxs_1, normals
+
