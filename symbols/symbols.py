@@ -4,10 +4,11 @@ S Y M B O L S
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
+import math
+
 import attr
 import numpy as np
 
-from symbols import func
 
 TAU = 2.0 * np.pi
 
@@ -79,22 +80,35 @@ def to_int(x):
     return int(x[0]), int(x[1])
 
 
-def points_around_circle(n_points, start, radius, center):
-    return [
-        func.apply(
-            circle_point(x * TAU / n_points + start, radius),
-            lambda p: add(p, center),
-            to_int  # TODO: get rid of this eventually
-        )
-        for x in range(n_points)]
+# def points_around_circle(n_points, start, radius, center):
+#     return [
+#         func.apply(
+#             circle_point(x * TAU / n_points + start, radius),
+#             lambda p: add(p, center),
+#             to_int  # TODO: get rid of this eventually
+#         )
+#         for x in range(n_points)]
+
+
+def length(line: Line) -> float:
+    """length of a line"""
+    dx = line.end[0] - line.start[0]
+    dy = line.end[1] - line.start[1]
+    return math.sqrt(dx * dx + dy * dy)
 
 
 def line_frac(line, frac):
     """transform a line into a fraction of a line"""
-    y_diff = line.end[1] - line.start[1]
-    x_diff = line.end[0] - line.start[0]
-    new_end = to_int(add(line.start, (frac * x_diff, frac * y_diff)))
+    new_end = interp(line.start, line.end, frac)
     return Line(line.start, new_end, line.color, line.thickness)
+
+
+def interp(start, end, frac):
+    """interpolate along a line"""
+    x_diff = end[0] - start[0]
+    y_diff = end[1] - start[1]
+    return add(start, (frac * x_diff, frac * y_diff))
+
 
 
 # ~~~~ functions for constructing animations ~~~~

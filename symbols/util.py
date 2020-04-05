@@ -35,6 +35,7 @@ def rotation_z(angle):
 
 class Profiler:
     """simple class for totalling up times"""
+
     def __init__(self):
         self.times = OrderedDict()
 
@@ -46,6 +47,11 @@ class Profiler:
         end_time = time.time()
         start_time, total_time = self.times.setdefault(key, (end_time, 0.0))
         self.times[key] = (None, total_time + (end_time - start_time))
+
+    def summary(self):
+        times = [(x, y) for x, (_, y) in self.times.items()]
+        for key, dur in times:
+            print(key.ljust(20, "."), round(dur, 3))
 
 
 def ffmpeg_command(images_dirname, output_filename, width, height, fps):
