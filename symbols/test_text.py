@@ -66,20 +66,50 @@ class TestsText(unittest.TestCase):
     def test_alignment(self):
         """Draw examples for debugging text alignment issues."""
 
-        font = blimp.load_font("Cinzel-Regular.ttf", 48)  # 64)
-
-        im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
+        font = blimp.load_font("Cinzel-Regular.ttf", 48)
+        font_scala = ("Cinzel", "plain", 48)
 
         # 2020-03-22
 
         # These samples demonstrate a one pixel shift off the baseline
-        # using Cinzel Regular size 48.
+        # using Cinzel Regular size 48 when using PIL's simple font
+        # drawing functionality
 
         # The shift happens on the first zero of 2020, and all of the
         # glyphs shift upward.
 
         # The shift does not necessarily happen for other font sizes,
         # such as 49 and 64.
+
+        def draw_pil(im, text_cur, pos_x, pos_y):
+            """draw text with PIL"""
+            draw = ImageDraw.Draw(im)
+            draw.text(
+                (pos_x, pos_y),
+                text_cur,
+                font=font,
+                fill=(255, 255, 255))
+            size_x, size_y = text.size(text_cur, font)
+            # offset_x, offset_y = text.offset(text_cur, font)
+            line_height = text.font_line_height(font)
+            ascent, descent = font.getmetrics()
+            return size_x, size_y, ascent, descent, line_height
+
+        def draw_scala(im, text_cur, pos_x, pos_y):
+            """draw text with scala"""
+            from symbols import text_scala
+            info = text_scala.draw_on_image(
+                im,
+                (pos_x, pos_y),
+                text_cur,
+                font=font_scala,
+                fill=(255, 255, 255))
+            size_x = info["width"]
+            size_y = info["height"]
+            ascent = info["ascent"]
+            descent = info["descent"]
+            line_height = ascent + descent
+            return size_x, size_y, ascent, descent, line_height
 
         texts_all = [
             "April",
@@ -99,19 +129,27 @@ class TestsText(unittest.TestCase):
             "april 2020"
         ]
 
+        # texts_all = ["AVIARY", "aviary", "To"]
+
         start_x = 50
         start_y = 50
         pos_x = start_x
         pos_y = start_y
 
+        im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
+
+        draw_func = draw_scala
+
         for idx, text_cur in enumerate(texts_all):
             # large image
-            size_x, size_y = _draw_text_with_info(im_bg, text_cur, font, pos_x, pos_y)
+            size_x, size_y = _draw_text_with_info(
+                im_bg, text_cur, pos_x, pos_y, draw_func)
             pos_x = pos_x + size_x + 50
 
             # small images
             im = Image.new("RGBA", (480, 320), (0, 0, 0))
-            _ = _draw_text_with_info(im, text_cur, font, start_x, start_y)
+            _ = _draw_text_with_info(
+                im, text_cur, start_x, start_y, draw_func)
             _debug_save_image(im, f"align_{idx}.png")
 
         _debug_save_image(im_bg, "align_all.png")
@@ -125,25 +163,13 @@ def _debug_save_image(im: Image, filename: str):
         im.save(output_filename)
 
 
-def _draw_text_with_info(im, text_cur, font, pos_x, pos_y):
+def _draw_text_with_info(im, text_cur, pos_x, pos_y, draw_func):
     """draw text with info lines for debugging"""
-
-    # ~~~
-
-    # TODO: eventually abstract this stuff out for testing other text libs
 
     draw = ImageDraw.Draw(im)
 
-    draw.text(
-        (pos_x, pos_y),
-        text_cur,
-        font=font,
-        fill=(255, 255, 255))
-
-    size_x, size_y = text.size(text_cur, font)
-    offset_x, offset_y = text.offset(text_cur, font)
-    line_height = text.font_line_height(font)
-    ascent, descent = font.getmetrics()
+    res = draw_func(im, text_cur, pos_x, pos_y)
+    size_x, size_y, ascent, descent, line_height = res
 
     # ~~~
 
@@ -166,9 +192,9 @@ def _draw_text_with_info(im, text_cur, font, pos_x, pos_y):
         "red")
 
     # green at offset
-    draw_line(
-        ((offset_x, offset_y), (offset_x + size_x, offset_y)),
-        "green")
+    # draw_line(
+    #     ((offset_x, offset_y), (offset_x + size_x, offset_y)),
+    #     "green")
 
     # blue at base of text
     # This should definitely be constant since it only depends
@@ -179,7 +205,7 @@ def _draw_text_with_info(im, text_cur, font, pos_x, pos_y):
 
     print("text:       ", "'" + text_cur + "'")
     print("size:       ", size_x, size_y)
-    print("offset:     ", offset_x, offset_y)
+    # print("offset:     ", offset_x, offset_y)
     print("line height:", line_height)
     print()
 
