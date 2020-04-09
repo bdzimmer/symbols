@@ -21,14 +21,10 @@ IMAGE_DIRNAME = "text_cache"
 BIN_DIRNAME = "C:/Ben/code/secondary/dist"
 
 
-def draw(text: str, font: Font) -> np.array:
+def draw(text: str, font: Font, border_size) -> np.array:
     """draw text using external tool"""
 
-    # TODO: borders
-    # it seems likely we'll want to render the font with borders
-    # and then that will have to part of info, compositing, etc.
-
-    id_object = (text, font)
+    id_object = (text, font, border_size)
     id_string = compute_hash(id_object)
 
     image_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".png")
@@ -39,6 +35,8 @@ def draw(text: str, font: Font) -> np.array:
             config_file.write(text + "\n")
             name, style, size = font
             config_file.write(f"{name};{style};{size}\n")
+            border_x, border_y = border_size
+            config_file.write(f"{border_x};{border_y}\n")
         command = draw_command(config_filename)
         os.system(command)
 
@@ -60,7 +58,9 @@ def draw_on_image(
         pos: Tuple[int, int],
         text: str,
         font: Font,
-        fill: Color) -> Dict[str, int]:
+        fill: Color,
+        border_size: Tuple[int, int]
+        ) -> Dict[str, int]:
 
     """draw text onto a PIL Image, mutating it"""
 
@@ -69,9 +69,10 @@ def draw_on_image(
 
     # Currently assumes that the PIL Image has an alpha channel.
 
-    # TODO: borders
+    im_text, info = draw(text, font, border_size)
 
-    im_text, info = draw(text, font)
+    # adjust position with border_size
+    pos_adj = (pos[0] - border_size[0], pos[1] - border_size[1])
 
     # colorize
     im_text = colorize(im_text, fill)
@@ -79,9 +80,9 @@ def draw_on_image(
     # alpha blend using PIL
     im_text_pil = Image.fromarray(im_text)
     # im_pil = Image.fromarray(im)
-    # im_pil.alpha_composite(im_text_pil, pos)
+    # im_pil.alpha_composite(im_text_pil, pos_adj)
 
-    im.alpha_composite(im_text_pil, pos)
+    im.alpha_composite(im_text_pil, pos_adj)
     # im[:, :, :] = np.array(im_pil)
 
     return info

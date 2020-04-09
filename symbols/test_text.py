@@ -68,6 +68,7 @@ class TestsText(unittest.TestCase):
 
         font = blimp.load_font("Cinzel-Regular.ttf", 48)
         font_scala = ("Cinzel", "plain", 48)
+        border_size = (32, 32)
 
         # 2020-03-22
 
@@ -103,7 +104,8 @@ class TestsText(unittest.TestCase):
                 (pos_x, pos_y),
                 text_cur,
                 font=font_scala,
-                fill=(255, 255, 255))
+                fill=(255, 255, 255),
+                border_size=border_size)
             size_x = info["width"]
             size_y = info["height"]
             ascent = info["ascent"]
