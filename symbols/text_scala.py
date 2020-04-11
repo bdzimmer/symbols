@@ -18,7 +18,7 @@ Font = Tuple[str, str, int]
 Color = Tuple[int, int, int]
 
 IMAGE_DIRNAME = "text_cache"
-BIN_DIRNAME = "C:/Ben/code/secondary/dist"
+BIN_DIRNAME = "C:/Projects/code/secondary/dist"
 
 
 def draw(text: str, font: Font, border_size) -> np.array:
