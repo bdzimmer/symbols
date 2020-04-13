@@ -10,7 +10,6 @@ import cv2
 import numpy as np
 
 from symbols import transforms
-from symbols import symbols
 
 
 def total_points(base_point, fiber_points):
@@ -51,19 +50,39 @@ def draw_fibration(
         decoration_func,               # generate additional stuff on fibers
         decoration_only
         ):
+    """for backward compatibility with older scripts"""
 
+    pts, norms, idxs_0, idxs_1 = fibration_geom(
+        base_points, fiber_points,
+        decoration_func,
+        decoration_only)
+
+    obj_rot = transforms.sep_rotation(obj_trans)
+    pts = transforms.transform(obj_trans, pts)
+    norms = np.dot(obj_rot, norms)
+
+    canvas_shape = (canvas.shape[1], canvas.shape[0])
+
+    pts_0, pts_1, colors = light_and_flatten_geometry(
+        pts, norms, idxs_0, idxs_1, color,
+        cam_trans, view_pos, canvas_shape)
+
+    draw_segments(canvas, pts_0, pts_1, colors, line_width)
+
+
+def fibration_geom(
+        base_points,
+        fiber_points,
+        decoration_func,               # generate additional stuff on fibers
+        decoration_only
+        ):
     """draw the Hopf fibration for a set of base points and fiber points"""
 
-    color = np.array(color, dtype=np.float)[:, np.newaxis]
-    obj_rot = transforms.sep_rotation(obj_trans)
-
-    height, width, _ = canvas.shape
-    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
-
-    pts_0 = []
-    pts_1 = []
-    depths = []
-    colors = []
+    fiber_proj_all = []
+    fiber_proj_norms_all = []
+    point_idxs_0_all = []
+    point_idxs_1_all = []
+    points_count = 0
 
     for base_point_idx in range(base_points.shape[1]):
         base_point = base_points[:, base_point_idx]
@@ -141,92 +160,99 @@ def draw_fibration(
                 fiber_proj = points_addl
                 fiber_proj_norms = norms_addl
 
-            # # a quick test
-            # if False:
-            #     # this gives us two axes -> three axes for a coordinate system
-            #     # for each segment!
-            #     spikes = centers + mean_to_centers * 0.05
-            #     n_spikes = spikes.shape[1]
-            #     # fiber_proj = np.concatenate([fiber_proj, means, centers], axis=1)
-            #     fiber_proj = np.concatenate([fiber_proj, centers, spikes], axis=1)
-            #
-            #     point_0_idxs = np.concatenate([
-            #         point_0_idxs, range(n_fiber_proj, n_fiber_proj + n_spikes)], axis=0)
-            #     point_1_idxs = np.concatenate([
-            #         point_1_idxs, range(n_fiber_proj + n_spikes, n_fiber_proj + n_spikes * 2)], axis=0)
+        fiber_proj_all.append(fiber_proj)
+        fiber_proj_norms_all.append(fiber_proj_norms)
+        point_idxs_0_all.append(point_idxs_0 + points_count)
+        point_idxs_1_all.append(point_idxs_1 + points_count)
+        points_count = points_count + fiber_proj.shape[1]
 
-        # animation transformation
-        fiber_proj = transforms.transform(obj_trans, fiber_proj)
-        fiber_proj_norms = np.dot(obj_rot, fiber_proj_norms)
+    fiber_proj_all = np.concatenate(fiber_proj_all, axis=1)
+    fiber_proj_norms_all = np.concatenate(fiber_proj_norms_all, axis=1)
+    point_idxs_0_all = np.concatenate(point_idxs_0_all, axis=0)
+    point_idxs_1_all = np.concatenate(point_idxs_1_all, axis=0)
 
-        # compare normals against z-axis (direction camera is pointing)
-        # TODO: update for generic camera!!!
-        vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
-        # TODO: why am I not using dot here???
-        norms_dot = np.sum(fiber_proj_norms * vec, axis=0, keepdims=True)
+    return fiber_proj_all, fiber_proj_norms_all, point_idxs_0_all, point_idxs_1_all
 
-        # sort of backface culling effect (segments "facing" away invisible)
-        # color_scale = np.clip(diffs_norm_dot, 0.0, 1.0)
 
-        # clip may not be necessary here
-        # TODO: make the below configurable (basicall backface culling)
-        color_scale = np.clip(norms_dot, 0.0, 1.0)
-        # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
-        color_scale = color_scale * color_scale
+def light_and_flatten_geometry(
+        pts, norms, idxs_0, idxs_1, color,
+        cam_trans, view_pos, canvas_shape):
 
-        colors_fiber = color * color_scale
-        colors_fiber = np.array(colors_fiber, np.float)
-        colors.append(colors_fiber)
+    """
+    apply lighting calculation to 3D segments,
+    apply perspective transformation,
+    depth sort,
+    and convert to 2D
+    """
 
-        # apply perspective transformation
-        fiber_proj_c = transforms.transform(cam_trans, fiber_proj)
-        fiber_proj_p = transforms.perspective(fiber_proj_c, view_pos)
-        # align and convert to int
-        # TODO: flip y properly
-        fiber_proj_p = np.array(fiber_proj_p + p_shift, dtype=np.int)
+    width, height = canvas_shape
+    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
 
-        pts_0.append(fiber_proj_p[:, point_idxs_0])
-        pts_1.append(fiber_proj_p[:, point_idxs_1])
+    # compare normals against z-axis (direction camera is pointing)
+    # TODO: update for generic camera / lighting
+    vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
+    # TODO: why am I not using dot here???
+    norms_dot = np.sum(norms * vec, axis=0, keepdims=True)
 
-        # TODO: there might be a better way to do this, like max?
-        # my gut says mean is better
-        depths_fiber = (fiber_proj_c[2, point_idxs_0] + fiber_proj_c[2, point_idxs_1]) * 0.5
-        depths.append(depths_fiber)
+    # sort of backface culling effect (segments "facing" away invisible)
+    # color_scale = np.clip(diffs_norm_dot, 0.0, 1.0)
 
-        # draw_polyline(canvas, fiber_proj_p, colors_fiber)
+    # clip may not be necessary here
+    # TODO: make the below configurable
+    # (lighting calculations)
+    color_scale = np.clip(norms_dot, 0.0, 1.0)
+    # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
+    color_scale = color_scale * color_scale
 
-    # stack and draw all of them at once
+    colors = np.array(color)[:, np.newaxis] * color_scale
 
-    pts_0 = np.concatenate(pts_0, axis=1)
-    pts_1 = np.concatenate(pts_1, axis=1)
-    colors = np.concatenate(colors, axis=1)
-    depths = np.concatenate(depths, axis=0)
+    # apply perspective transformation
+    pts_c = transforms.transform(cam_trans, pts)
+    pts_p = transforms.perspective(pts_c, view_pos)
+    # align and convert to int
+    # TODO: flip y properly
+    pts_p = np.array(pts_p + p_shift, dtype=np.int)
+
+    pts_0 = pts_p[:, idxs_0]
+    pts_1 = pts_p[:, idxs_1]
+
+    # TODO: there might be a better way to do calculate depth, like max?
+    # my gut says mean is better
+    depths = (pts[2, idxs_0] + pts[2, idxs_1]) * 0.5
 
     # sort by depths
     sorted_idxs = np.argsort(depths)
 
-    for line_idx in sorted_idxs:  # range(pts_0.shape[1]):
+    return (
+        pts_0[:, sorted_idxs],
+        pts_1[:, sorted_idxs],
+        colors[:, sorted_idxs])
+
+
+def draw_segments(canvas, pts_0, pts_1, colors, line_width):
+    """draw a collection of 2D segments on a canvas"""
+
+    for line_idx in range(pts_0.shape[1]):
 
         color = tuple(colors[:, line_idx])
         pt_0 = tuple(pts_0[:, line_idx])
         pt_1 = tuple(pts_1[:, line_idx])
 
         # print(pt_0, "->", pt_1)
+        # if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface culling
+        cv2.line(
+            canvas,
+            pt_0,
+            pt_1,
+            color,
+            line_width,
+            cv2.LINE_AA)
 
-        if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface culling
-            cv2.line(
-                canvas,
-                pt_0,
-                pt_1,
-                color,
-                line_width,
-                cv2.LINE_AA)
-
-
-# TODO: move this somewhere more generic
 
 def disk_segments(x_axis, z_axis, radius, n_points):
     """disk segments"""
+    # TODO: move this somewhere more generic
+
     y_axis = np.cross(z_axis, x_axis)
 
     circle_points = np.array(transforms.points_around_circle(n_points, 0.0, radius))
@@ -247,4 +273,3 @@ def disk_segments(x_axis, z_axis, radius, n_points):
     normals = centers / np.linalg.norm(centers, axis=1, keepdims=True)
 
     return circle_points, idxs_0, idxs_1, normals
-
