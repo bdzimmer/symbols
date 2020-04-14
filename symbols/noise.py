@@ -98,6 +98,7 @@ def draw_frame(
         p_pos_p = transforms.perspective(p_pos_c, view_pos)
         # align and convert to int
         # TODO: flip y properly
+        p_pos_p[1, :] = 0.0 - p_pos_p[1, :]
         p_pos_p = np.clip(np.array(p_pos_p + p_shift), -width * 2, height * 2)
         p_pos_p = np.array(p_pos_p, dtype=np.int)
         p_pos_p = np.transpose(p_pos_p)

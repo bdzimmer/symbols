@@ -38,6 +38,9 @@ def camera_transform(rot, pos):
 
 
 def perspective(points, view_pos):
+    points = np.copy(points)
+    points[2, :] = np.minimum(points[2, :], 0.0)
+
     return np.row_stack([
         view_pos[2] * points[0, :] / points[2, :] - view_pos[0],
         view_pos[2] * points[1, :] / points[2, :] - view_pos[1]])

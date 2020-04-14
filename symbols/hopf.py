@@ -202,7 +202,7 @@ def light_and_flatten_geometry(
     # (lighting calculations)
     color_scale = np.clip(norms_dot, 0.0, 1.0)
     # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
-    color_scale = color_scale * color_scale
+    color_scale = color_scale ** 4
 
     colors = np.array(color)[:, np.newaxis] * color_scale
 
@@ -211,6 +211,7 @@ def light_and_flatten_geometry(
     pts_p = transforms.perspective(pts_c, view_pos)
     # align and convert to int
     # TODO: flip y properly
+    pts_p[1, :] = 0.0 - pts_p[1, :]
     pts_p = np.array(pts_p + p_shift, dtype=np.int)
 
     pts_0 = pts_p[:, idxs_0]
@@ -251,7 +252,7 @@ def draw_segments(canvas, pts_0, pts_1, colors, line_width):
 
 def disk_segments(x_axis, z_axis, radius, n_points):
     """disk segments"""
-    # TODO: move this somewhere more generic
+    # TODO: move this somewhere more generic, like a generic geometry module
 
     y_axis = np.cross(z_axis, x_axis)
 
