@@ -205,6 +205,7 @@ def light_and_flatten_geometry(
     color_scale = color_scale ** 4
 
     colors = np.array(color)[:, np.newaxis] * color_scale
+    colors[3, :] = color[3]
 
     # apply perspective transformation
     pts_c = transforms.transform(cam_trans, pts)

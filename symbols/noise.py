@@ -74,6 +74,9 @@ def draw_frame(
         particle_size,
         depth_sort,
 
+        color_func,  # color given 0.0-1.0 age value
+        build_draw_func,   # function for drawing on canvas
+
         prof        # profiler
         ):
 
@@ -112,8 +115,7 @@ def draw_frame(
 
     prof.tick("draw")
 
-    canvas_im = Image.fromarray(canvas)  # I think I can do this once
-    canvas_draw = ImageDraw.Draw(canvas_im)
+    canvas_draw, canvas_draw_get = build_draw_func(canvas)
 
     # stack arrays
 
@@ -132,33 +134,74 @@ def draw_frame(
         p_age_head = actives_head[p_idx]    # age at head in current frame?
 
         if -1 < p_age_tail <= max_life and p_age_head > -1:
-
             age_diff = p_age_head - p_age_tail  # age difference between head and tail
-
             color_scale = max(trail_length - age_diff, 0) / trail_length
-            color_scale = max(min(color_scale, 1.0), 0.0)
-            color = (
-                int(255 * color_scale),
-                int(255 * color_scale * color_scale),
-                0)
-
+            color = color_func(color_scale)
             x, y = coords[p_idx, :]
+            canvas_draw((x, y), particle_size, color)
 
-            # cv2.circle(canvas, (x, y), particle_size, color, -1)
-
-            if particle_size == 0:
-                canvas_draw.point([(x, y)], color)
-            else:
-                canvas_draw.ellipse(
-                    [x - particle_size,
-                     y - particle_size,
-                     x + particle_size,
-                     y + particle_size],
-                    color)
-
-    canvas = np.array(canvas_im)
+    canvas = canvas_draw_get()
 
     prof.tock("draw")
 
     return canvas
 
+
+def ethereal_color_func(age):
+    """default color function"""
+    # TODO: this clamp / clip shouldn't be necessary
+    age = max(min(age, 1.0), 0.0)
+    return (
+        int(255 * age),
+        int(255 * age * age),
+        0)
+
+
+def build_pil_draw_func(canvas, composite):
+    """draw a point on a canvas with OpenCV"""
+
+    canvas_im = Image.fromarray(canvas, "RGBA")
+    if composite:
+        canvas_comp = Image.new("RGBA", canvas_im.size, (0, 0, 0, 0))
+        canvas_draw = ImageDraw.Draw(canvas_comp)
+    else:
+        canvas_draw = ImageDraw.Draw(canvas_im)
+
+    def draw(pos, particle_size, color):
+        """do the drawing"""
+
+        x, y = pos
+        if particle_size == 0:
+            canvas_draw.point([(x, y)], color)
+        else:
+            canvas_draw.ellipse(
+                [x - particle_size,
+                 y - particle_size,
+                 x + particle_size,
+                 y + particle_size],
+                color)
+        if composite:
+            # canvas_im.alpha_composite(canvas_comp)
+            print(".", end="")
+            crop_section = (
+                [x - particle_size - 1,
+                 y - particle_size - 1,
+                 x + particle_size + 1,
+                 y + particle_size + 1]
+            )
+            canvas_im.alpha_composite(
+                canvas_comp.crop(crop_section),
+                (x - particle_size - 1,
+                 y - particle_size - 1)
+            )
+            canvas_comp.paste(
+                (0, 0, 0, 0),
+                # (0, 0, canvas_comp.size[0], canvas_comp.size[1])
+                crop_section
+            )
+
+
+    def get():
+        return np.array(canvas_im)
+
+    return draw, get

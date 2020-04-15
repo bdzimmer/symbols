@@ -103,13 +103,17 @@ def line_frac(line, frac):
     return Line(line.start, new_end, line.color, line.thickness)
 
 
+# def interp(start, end, frac):
+#     """interpolate along a line"""
+#     x_diff = end[0] - start[0]
+#     y_diff = end[1] - start[1]
+#     return add(start, (frac * x_diff, frac * y_diff))
+
+
 def interp(start, end, frac):
-    """interpolate along a line"""
-    x_diff = end[0] - start[0]
-    y_diff = end[1] - start[1]
-    return add(start, (frac * x_diff, frac * y_diff))
-
-
+    """interpolation"""
+    diff = end - start
+    return start + (frac * diff)
 
 # ~~~~ functions for constructing animations ~~~~
 
