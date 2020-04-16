@@ -182,7 +182,6 @@ def build_pil_draw_func(canvas, composite):
                 color)
         if composite:
             # canvas_im.alpha_composite(canvas_comp)
-            print(".", end="")
             crop_section = (
                 [x - particle_size - 1,
                  y - particle_size - 1,
@@ -199,7 +198,6 @@ def build_pil_draw_func(canvas, composite):
                 # (0, 0, canvas_comp.size[0], canvas_comp.size[1])
                 crop_section
             )
-
 
     def get():
         return np.array(canvas_im)

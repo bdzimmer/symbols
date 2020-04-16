@@ -8,6 +8,7 @@ Hopf fibration functions.
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw
 
 from symbols import transforms
 
@@ -93,8 +94,8 @@ def fibration_geom(
 
         # stack lines and depths
         point_idxs = list(range(fiber_proj.shape[1])) + [0]
-        point_idxs_0 = point_idxs[0:-1]
-        point_idxs_1 = point_idxs[1:]
+        point_idxs_0 = np.array(point_idxs[0:-1])
+        point_idxs_1 = np.array(point_idxs[1:])
 
         # find normals
         fiber_mean = np.mean(fiber_proj, axis=1, keepdims=True)
@@ -162,6 +163,7 @@ def fibration_geom(
 
         fiber_proj_all.append(fiber_proj)
         fiber_proj_norms_all.append(fiber_proj_norms)
+
         point_idxs_0_all.append(point_idxs_0 + points_count)
         point_idxs_1_all.append(point_idxs_1 + points_count)
         points_count = points_count + fiber_proj.shape[1]
@@ -206,6 +208,7 @@ def light_and_flatten_geometry(
 
     colors = np.array(color)[:, np.newaxis] * color_scale
     colors[3, :] = color[3]
+    # colors = np.array(colors, dtype=np.uint8)
 
     # apply perspective transformation
     pts_c = transforms.transform(cam_trans, pts)
@@ -228,7 +231,8 @@ def light_and_flatten_geometry(
     return (
         pts_0[:, sorted_idxs],
         pts_1[:, sorted_idxs],
-        colors[:, sorted_idxs])
+        colors[:, sorted_idxs],
+        sorted_idxs)
 
 
 def draw_segments(canvas, pts_0, pts_1, colors, line_width):
@@ -240,6 +244,8 @@ def draw_segments(canvas, pts_0, pts_1, colors, line_width):
         pt_0 = tuple(pts_0[:, line_idx])
         pt_1 = tuple(pts_1[:, line_idx])
 
+        print(pt_0, pt_1, color, line_width)
+
         # print(pt_0, "->", pt_1)
         # if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface culling
         cv2.line(
@@ -249,6 +255,57 @@ def draw_segments(canvas, pts_0, pts_1, colors, line_width):
             color,
             line_width,
             cv2.LINE_AA)
+
+
+def draw_segments_transparent(
+        canvas, pts_0, pts_1, colors, line_width,
+        composite):
+
+    if composite:
+        canvas_comp = canvas
+        canvas_draw = np.zeros(canvas.shape, dtype=np.uint8)
+    else:
+        canvas_draw = canvas
+
+    for line_idx in range(pts_0.shape[1]):
+
+        color = tuple(colors[:, line_idx])
+        pt_0 = tuple(pts_0[:, line_idx])
+        pt_1 = tuple(pts_1[:, line_idx])
+
+        cv2.line(
+            canvas_draw,
+            pt_0,
+            pt_1,
+            color,
+            line_width,
+            cv2.LINE_AA)
+
+        if composite:
+            x_0 = int(pt_0[0])
+            y_0 = int(pt_0[1])
+            x_1 = int(pt_1[0])
+            y_1 = int(pt_1[1])
+
+            x_l = min(x_0, x_1) - line_width - 1
+            y_l = min(y_0, y_1) - line_width - 1
+            x_r = max(x_0, x_1) + line_width + 1
+            y_r = max(y_0, y_1) + line_width + 1
+
+            src_chunk = canvas_draw[y_l:y_r, x_l:x_r, :]
+            dst_chunk = canvas_comp[y_l:y_r, x_l:x_r, :]
+            src_rgb = src_chunk[:, :, 0:3]
+            dst_rgb = dst_chunk[:, :, 0:3]
+            src_a = src_chunk[:, :, 3:4] / 255.0
+            dst_a = dst_chunk[:, :, 3:4] / 255.0
+
+            out_a = src_a + dst_a * (1.0 - src_a)
+            out_rgb = src_rgb * src_a + dst_rgb * dst_a * (1.0 - src_a)
+            out_rgb[out_a[:, :, 0] > 0.0] = (out_rgb / out_a)[out_a[:, :, 0] > 0.0]
+            out_rgb[out_a[:, :, 0] == 0.0] = 0.0
+
+            canvas_comp[y_l:y_r, x_l:x_r, 0:3] = np.array(out_rgb, dtype=np.uint8)
+            canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
 
 
 def disk_segments(x_axis, z_axis, radius, n_points):

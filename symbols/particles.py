@@ -33,14 +33,17 @@ def build_vertex_emitter(lines: List[symbols.Line]) -> Callable[[], Point2D]:
     return emit
 
 
-def build_line_emitter(lines: List[symbols.Line]) -> Callable[[], Point2D]:
+def build_line_emitter(lines: List[symbols.Line], weights) -> Callable[[], Point2D]:
     """given a set of lines, choose a point on one of the lines"""
 
     # build probabilties based on line length
     lengths = [symbols.length(x) for x in lines]
-    # TODO: optional weights on probs!
+    if weights is not None:
+        lengths = [x * y for x, y in zip(lengths, weights)]
     lengths_total = sum(lengths)
     probs = [x / lengths_total for x in lengths]
+
+
 
     idxs = list(range(len(lines)))
 
