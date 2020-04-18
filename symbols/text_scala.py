@@ -18,13 +18,21 @@ Font = Tuple[str, str, int]
 Color = Tuple[int, int, int]
 
 IMAGE_DIRNAME = "text_cache"
-BIN_DIRNAME = "C:/Projects/code/secondary/dist"
+BIN_DIRNAME = [
+    "C:/Projects/code/secondary/dist",
+    "/home/ben/code/secondary/dist"][1]
 
 
-def draw(text: str, font: Font, border_size) -> np.array:
+def draw(
+        text: str,
+        font: Font,
+        stroke_width: int,
+        border_size: Tuple[int, int]) -> np.array:
     """draw text using external tool"""
 
-    id_object = (text, font, border_size)
+    print(stroke_width, border_size)
+
+    id_object = (text, font, stroke_width, border_size)
     id_string = compute_hash(id_object)
 
     image_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".png")
@@ -37,6 +45,8 @@ def draw(text: str, font: Font, border_size) -> np.array:
             config_file.write(f"{name};{style};{size}\n")
             border_x, border_y = border_size
             config_file.write(f"{border_x};{border_y}\n")
+            if stroke_width > 0:
+                config_file.write(f"{stroke_width}\n")
         command = draw_command(config_filename)
         os.system(command)
 
@@ -47,8 +57,12 @@ def draw(text: str, font: Font, border_size) -> np.array:
         lines = info_file.readlines()
         info = {}
         for line in lines:
-            key, val = line.split("\t")
-            info[key] = int(val)
+            key, val = line.strip().split("\t")
+            if key == "stroke":
+                if val is not None:
+                    info[key] = float(stroke_width)
+            else:
+                info[key] = int(val)
 
     return im, info
 
@@ -59,6 +73,7 @@ def draw_on_image(
         text: str,
         font: Font,
         fill: Color,
+        stroke_width: int,
         border_size: Tuple[int, int]
         ) -> Dict[str, int]:
 
@@ -69,7 +84,7 @@ def draw_on_image(
 
     # Currently assumes that the PIL Image has an alpha channel.
 
-    im_text, info = draw(text, font, border_size)
+    im_text, info = draw(text, font, stroke_width, border_size)
 
     # adjust position with border_size
     pos_adj = (pos[0] - border_size[0], pos[1] - border_size[1])
@@ -79,11 +94,7 @@ def draw_on_image(
 
     # alpha blend using PIL
     im_text_pil = Image.fromarray(im_text)
-    # im_pil = Image.fromarray(im)
-    # im_pil.alpha_composite(im_text_pil, pos_adj)
-
     im.alpha_composite(im_text_pil, pos_adj)
-    # im[:, :, :] = np.array(im_pil)
 
     return info
 
