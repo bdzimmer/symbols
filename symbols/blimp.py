@@ -17,6 +17,7 @@ import numpy as np
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
+DEBUG_GUIDES = True
 
 if os.name == "nt":
     FONTS_DIRNAME = ""
@@ -57,7 +58,8 @@ def main(argv):
                 start_time = time.time()
                 res = assemble_group(
                     config["layers"], canvas_width, canvas_height, resources_dirname, False,
-                    save_layer, save_total, project_dirname, prefix="")
+                    save_layer, save_total, project_dirname, "",
+                    DEBUG_GUIDES)
 
                 end_time = time.time()
                 total_time = end_time - start_time
@@ -81,7 +83,8 @@ def main(argv):
         start_time = time.time()
         res = assemble_group(
             config["layers"], canvas_width, canvas_height, resources_dirname, False,
-            save_layer, save_total, project_dirname, prefix="")
+            save_layer, save_total, project_dirname, "",
+            DEBUG_GUIDES)
 
         Image.fromarray(res[:, :, 0:3]).save(
             os.path.join(
@@ -99,7 +102,8 @@ def main(argv):
 
 def assemble_group(
         layers, canvas_width, canvas_height, resources_dirname, canvas_alpha,
-        save_layer, save_total, project_dirname, prefix):
+        save_layer, save_total, project_dirname, prefix,
+        debug_guides):
 
     start_time = time.time()
 
@@ -145,6 +149,9 @@ def assemble_group(
         layer_y = layer.get(
             "y", int(canvas_height * 0.5 - layer_height * 0.5))
 
+        layer_x_org = layer_x
+        layer_y_org = layer_y
+
         # trim and update positions
         layer_image_trimmed, layer_x, layer_y = trim(
             layer_image, layer_x, layer_y, canvas_width, canvas_height)
@@ -171,6 +178,35 @@ def assemble_group(
         #     "at", (layer_x - border_x, layer_y - border_y))
         res.alpha_composite(image_pil, (layer_x - border_x, layer_y - border_y))
 
+        if debug_guides:
+            # draw outer edges of borders in green and edges of
+            # layer proper in black. Green lines should not be
+            # visible if borders have size zero.
+
+            draw = ImageDraw.Draw(res)
+
+            def draw_v(x, color):
+                """draw a vertical line at x"""
+                draw.line([(x, 0), (x, res.size[1])], fill=color)
+
+            def draw_h(y, color):
+                """draw a horizontal line at y"""
+                draw.line([(0, y), (res.size[0], y)], fill=color)
+
+            # outer edges of borders
+            draw_v(layer_x_org, (0, 255, 0))
+            draw_v(layer_x_org + layer_width + 2 * border_x, (0, 255, 0))
+            draw_h(layer_y_org, (0, 255, 0))
+            draw_h(layer_x_org + layer_height + 2 * border_y, (0, 255, 0))
+            # edges of layer proper
+            draw_v(layer_x_org + border_x, (0, 0, 0))
+            draw_v(layer_x_org + layer_width, (0, 0, 0))
+            draw_h(layer_y_org + border_y, (0, 0, 0))
+            draw_h(layer_x_org + layer_height, (0, 0, 0))
+
+
+
+
         if save_total:
             res.save(
                 os.path.join(
@@ -182,7 +218,9 @@ def assemble_group(
     return np.array(res)
 
 
-def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
+def text_custom_kerning(
+        text, font, color, stroke_width, stroke_fill, kern_add,
+        debug_guides):
     """text, controlling letter spacing"""
 
     letter_sizes = [font.getsize(x) for x in text]
@@ -209,10 +247,12 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
 
     # TODO: add stroke width logic to original text function
 
-    offset_x_first = letter_offsets[0][0]
+    # I think we can get rid of this initial offset
+    # offset_x_first = letter_offsets[0][0]
+    offset_x_first = 0
     width_total = (
         sum(widths)
-        - offset_x_first
+        # - offset_x_first
         + (len(widths) - 1) * kern_add
         + stroke_width * 2  # Needs to be * 2 since it is added on all sides
     )
@@ -278,6 +318,19 @@ def text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add):
         # composite stroke onto text
         image = Image.alpha_composite(image, Image.fromarray(solid_stroke_np))
 
+    if debug_guides:
+        print("text offset:", offset)
+        ascent, descent = font.getmetrics()
+        draw = ImageDraw.Draw(image)
+        # draw baseline
+        draw.line([(0, ascent), (image.size[0] - 1, ascent)], fill=(0, 0, 0))
+        # draw lines at edges of image
+        # draw baseline
+        draw.line([(0, 0), (image.size[0] - 1, 0)], fill=(0, 0, 0))
+        draw.line([(0, image.size[1] - 1), (image.size[0] - 1, image.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(0, 0), (0, image.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(image.size[0] - 1, 0), (image.size[0] - 1, image.size[1] - 1)], fill=(0, 0, 0))
+
     # debugging
     # cv2.imwrite("text.png", solid_text_np)
     # cv2.imwrite("stroke.png", solid_stroke_np)
@@ -293,7 +346,7 @@ def text_standard(text, font, color, stroke_width, stroke_fill):
     draw = ImageDraw.Draw(image)
     # TODO: how to use offset here?
     draw.text(
-        (0 - offset[0], 0),
+        (0, 0),
         text, font=font, fill=color,
         stroke_width=stroke_width, stroke_fill=stroke_fill)
     return image
@@ -309,6 +362,7 @@ def render_layer(layer, resources_dirname):
         print(resources_dirname)
 
         image = load_image(os.path.join(resources_dirname, filename))
+        image = np.copy(image)
 
     elif layer_type == "gaussian":
         width = layer["width"]
@@ -350,7 +404,9 @@ def render_layer(layer, resources_dirname):
         stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
 
         font = load_font(font_filename, font_size)
-        image_custom = text_custom_kerning(text, font, color, stroke_width, stroke_fill, kern_add)
+        image_custom = text_custom_kerning(
+            text, font, color, stroke_width, stroke_fill, kern_add,
+            DEBUG_GUIDES)
         if DEBUG:
             image = text_standard(text, font, color, stroke_width, stroke_fill)
             image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
@@ -386,7 +442,8 @@ def render_layer(layer, resources_dirname):
 
         image = assemble_group(
             sub_layers, width, height, resources_dirname, True,
-            False, False, None, None)
+            False, False, None, None,
+            False)
 
     elif layer_type == "empty":
         height = layer.get("height")
