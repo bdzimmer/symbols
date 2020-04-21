@@ -93,8 +93,13 @@ def draw_on_image(
     im_text = colorize(im_text, fill)
 
     # alpha blend using PIL
-    im_text_pil = Image.fromarray(im_text)
-    im.alpha_composite(im_text_pil, pos_adj)
+    if len(im.size) > 2:
+        im_text_pil = Image.fromarray(im_text)
+        im.alpha_composite(im_text_pil, pos_adj)
+    else:
+        im_text_pil = Image.fromarray(im_text[:, :, 3])
+        im_mask_pil = Image.fromarray(im_text[:, :, 3] > 0)
+        im.paste(im_text_pil, pos_adj, mask=im_mask_pil)
 
     return info
 

@@ -15,6 +15,8 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
+from symbols import blimp_text
+
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
 DEBUG_GUIDES = True
@@ -120,6 +122,7 @@ def assemble_group(
         layer_image = render_layer(layer, resources_dirname)
 
         # ~~~~ expand borders
+        # (this requires some special logic depending on the layer type)
 
         layer_image, border_x, border_y = expand_border_layer(layer_image, layer)
 
@@ -139,6 +142,9 @@ def assemble_group(
         # ~~~~ calculate position and trim
 
         # positions are calculated from inside the border
+        # note that we couldn't have derived layer_height and layer_width
+        # from the original layer image above due to some special
+        # per-type border rules.
         layer_height, layer_width, _ = layer_image.shape
         layer_width = layer_width - 2 * border_x
         layer_height = layer_height - 2 * border_y
@@ -149,10 +155,18 @@ def assemble_group(
         layer_y = layer.get(
             "y", int(canvas_height * 0.5 - layer_height * 0.5))
 
-        layer_x_org = layer_x
-        layer_y_org = layer_y
+        # throughout, layer_x and layer_y remain the coordinates
+        # of the logical layer (not including border)
+
+        # however, this breaks down with the trim function below
+        # and this is probably the source of some of the
+        # out of bounds issues I've seen, since those only
+        # seem to show up when a layer has borders.
 
         # trim and update positions
+        # TODO: this needs to be updated to deal properly with border sizes
+        # I think it's as simple as passing border_x and border_y in and adjusting
+        # layer_x and layer_y accordingly
         layer_image_trimmed, layer_x, layer_y = trim(
             layer_image, layer_x, layer_y, canvas_width, canvas_height)
 
@@ -170,12 +184,6 @@ def assemble_group(
             layer_image_trimmed = blend(layer_image_trimmed, opacity)
 
         image_pil = Image.fromarray(layer_image_trimmed)
-        # res.paste(image_pil, (layer_x - border_x, layer_y - border_y), image_pil)
-        # print(
-        #     "compositing",
-        #     image_pil.size,
-        #     "onto", res.size,
-        #     "at", (layer_x - border_x, layer_y - border_y))
         res.alpha_composite(image_pil, (layer_x - border_x, layer_y - border_y))
 
         if debug_guides:
@@ -194,18 +202,15 @@ def assemble_group(
                 draw.line([(0, y), (res.size[0], y)], fill=color)
 
             # outer edges of borders
-            draw_v(layer_x_org, (0, 255, 0))
-            draw_v(layer_x_org + layer_width + 2 * border_x, (0, 255, 0))
-            draw_h(layer_y_org, (0, 255, 0))
-            draw_h(layer_x_org + layer_height + 2 * border_y, (0, 255, 0))
+            draw_v(layer_x - border_x, (0, 255, 0))
+            draw_v(layer_x + layer_width + border_x, (0, 255, 0))
+            draw_h(layer_y - border_y, (0, 255, 0))
+            draw_h(layer_y + layer_height + border_y, (0, 255, 0))
             # edges of layer proper
-            draw_v(layer_x_org + border_x, (0, 0, 0))
-            draw_v(layer_x_org + layer_width, (0, 0, 0))
-            draw_h(layer_y_org + border_y, (0, 0, 0))
-            draw_h(layer_x_org + layer_height, (0, 0, 0))
-
-
-
+            draw_v(layer_x, (0, 0, 0))
+            draw_v(layer_x + layer_width, (0, 0, 0))
+            draw_h(layer_y, (0, 0, 0))
+            draw_h(layer_y + layer_height, (0, 0, 0))
 
         if save_total:
             res.save(
@@ -223,11 +228,11 @@ def text_custom_kerning(
         debug_guides):
     """text, controlling letter spacing"""
 
-    letter_sizes = [font.getsize(x) for x in text]
-    letter_offsets = [font.getoffset(x) for x in text]
+    letter_sizes = [blimp_text.getsize(font, x) for x in text]
+    letter_offsets = [blimp_text.getoffset(font, x) for x in text]
     letter_pairs = [text[idx:(idx + 2)] for idx in range(len(text) - 1)]
-    letter_pair_sizes = [font.getsize(x) for x in letter_pairs]
-    letter_pair_offsets = [font.getoffset(x) for x in letter_pairs]
+    letter_pair_sizes = [blimp_text.getsize(font, x) for x in letter_pairs]
+    letter_pair_offsets = [blimp_text.getoffset(font, x) for x in letter_pairs]
 
     # kerning "width" for a letter is width of pair
     # minus the width of the individual second letter
@@ -265,7 +270,7 @@ def text_custom_kerning(
         print("pair offsets:   ", [x[0] for x in letter_pair_offsets])
         print("true widths:    ", widths)
         print("sum ind. widths:", sum([x[0] for x in letter_sizes]))
-        print("getsize width:  ", font.getsize(text)[0])
+        print("getsize width:  ", blimp_text.getsize(font, text)[0])
         print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
@@ -274,27 +279,43 @@ def text_custom_kerning(
 
     # image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
     alpha_text = Image.new("L", (width_total, height_total), 0)
-    draw_text = ImageDraw.Draw(alpha_text)
+    # draw_text = ImageDraw.Draw(alpha_text)
 
     alpha_stroke = Image.new("L", (width_total, height_total), 0)
-    draw_stroke = ImageDraw.Draw(alpha_stroke)
+    # draw_stroke = ImageDraw.Draw(alpha_stroke)
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
-        draw_text.text(
-            (offset, 0),
-            letter,
+        # draw_text.text(
+        #     xy=(offset, 0),
+        #     text=letter,
+        #     font=font,
+        #     fill="white",
+        #     stroke_width=stroke_width,
+        #     stroke_fill="white")
+        blimp_text.text(
+            image=alpha_text,
+            xy=(offset, 0),
+            text_str=letter,
             font=font,
-            fill="white",
+            fill=(255, 255, 255),
             stroke_width=stroke_width,
-            stroke_fill="white")
-        draw_stroke.text(
-            (offset, 0),
-            letter,
+            stroke_fill=(255, 255, 255))
+        # draw_stroke.text(
+        #     xy=(offset, 0),
+        #     text=letter,
+        #     font=font,
+        #     fill="black",
+        #     stroke_width=stroke_width,
+        #     stroke_fill="white")
+        blimp_text.text(
+            image=alpha_stroke,
+            xy=(offset, 0),
+            text_str=letter,
             font=font,
-            fill="black",
+            fill=(0, 0, 0),
             stroke_width=stroke_width,
-            stroke_fill="white")
+            stroke_fill=(255, 255, 255))
 
         offset = offset + letter_width + kern_add
 
@@ -320,7 +341,7 @@ def text_custom_kerning(
 
     if debug_guides:
         print("text offset:", offset)
-        ascent, descent = font.getmetrics()
+        ascent, descent = blimp_text.getmetrics(font)
         draw = ImageDraw.Draw(image)
         # draw baseline
         draw.line([(0, ascent), (image.size[0] - 1, ascent)], fill=(0, 0, 0))
@@ -340,15 +361,24 @@ def text_custom_kerning(
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
     """standard text rendering"""
-    size = font.getsize(text)
-    offset = font.getoffset(text)
+    size = blimp_text.getsize(font, text)
     image = Image.new("RGBA", (size[0], size[1]), (255, 255, 255, 0))
-    draw = ImageDraw.Draw(image)
-    # TODO: how to use offset here?
-    draw.text(
-        (0, 0),
-        text, font=font, fill=color,
-        stroke_width=stroke_width, stroke_fill=stroke_fill)
+    # draw = ImageDraw.Draw(image)
+    # draw.text(
+    #     xy=(0, 0),
+    #     text=text,
+    #     font=font,
+    #     fill=color,
+    #     stroke_width=stroke_width,
+    #     stroke_fill=stroke_fill)
+    blimp_text.text(
+        image=image,
+        xy=(0, 0),
+        text_str=text,
+        font=font,
+        fill=color,
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill)
     return image
 
 
