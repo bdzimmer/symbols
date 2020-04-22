@@ -187,22 +187,24 @@ def draw(
             canvas_draw((x, y), particle_size, color)
 
 
-def ethereal_color_func(age):
+def ethereal_color_func(age, alpha):
     """default color function"""
     # TODO: this clamp / clip shouldn't be necessary
     age = max(min(age, 1.0), 0.0)
     return (
         int(255 * age),
         int(255 * age * age),
-        0)
+        0,
+        alpha * age * age  # 255
+    )
 
 
-def build_pil_draw_func(canvas, composite):
+def build_pil_draw_func(canvas, composite, canvas_comp):
     """draw a point on a canvas with OpenCV"""
 
     canvas_im = Image.fromarray(canvas, "RGBA")
     if composite:
-        canvas_comp = Image.new("RGBA", canvas_im.size, (0, 0, 0, 0))
+        # canvas_comp = Image.new("RGBA", canvas_im.size, (0, 0, 0, 0))
         canvas_draw = ImageDraw.Draw(canvas_comp)
     else:
         canvas_draw = ImageDraw.Draw(canvas_im)

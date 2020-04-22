@@ -214,7 +214,8 @@ def light_and_flatten_geometry(
 
     # TODO: there might be a better way to do calculate depth, like max?
     # my gut says mean is better
-    depths = (pts[2, idxs_0] + pts[2, idxs_1]) * 0.5
+    # depths = (pts[2, idxs_0] + pts[2, idxs_1]) * 0.5
+    depths = (pts_c[2, idxs_0] + pts_c[2, idxs_1]) * 0.5
 
     return pts_0, pts_1, colors, depths
 
@@ -266,11 +267,12 @@ def draw_segments(canvas, pts_0, pts_1, colors, line_width):
 
 def draw_segments_transparent(
         canvas, pts_0, pts_1, colors, line_width,
-        composite):
+        composite,
+        canvas_draw):
 
     if composite:
         canvas_comp = canvas
-        canvas_draw = np.zeros(canvas.shape, dtype=np.uint8)
+        # canvas_draw = np.zeros(canvas.shape, dtype=np.uint8)
     else:
         canvas_draw = canvas
 
@@ -313,6 +315,55 @@ def draw_segments_transparent(
 
             canvas_comp[y_l:y_r, x_l:x_r, 0:3] = np.array(out_rgb, dtype=np.uint8)
             canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
+
+            # clear scratch
+            canvas_draw[y_l:y_r, x_l:x_r, :] = 0.0
+
+
+# TODO: refactor and fix
+def draw_segment_transparent(
+        pt_0, pt_1, color, line_width,
+        composite,
+        canvas_comp,  # canvas being drawn onto
+        canvas_draw   # temp canvas
+    ):
+
+    cv2.line(
+        canvas_draw,
+        pt_0,
+        pt_1,
+        color,
+        line_width,
+        cv2.LINE_AA)
+
+    if composite:
+        x_0 = int(pt_0[0])
+        y_0 = int(pt_0[1])
+        x_1 = int(pt_1[0])
+        y_1 = int(pt_1[1])
+
+        x_l = min(x_0, x_1) - line_width - 1
+        y_l = min(y_0, y_1) - line_width - 1
+        x_r = max(x_0, x_1) + line_width + 1
+        y_r = max(y_0, y_1) + line_width + 1
+
+        src_chunk = canvas_draw[y_l:y_r, x_l:x_r, :]
+        dst_chunk = canvas_comp[y_l:y_r, x_l:x_r, :]
+        src_rgb = src_chunk[:, :, 0:3]
+        dst_rgb = dst_chunk[:, :, 0:3]
+        src_a = src_chunk[:, :, 3:4] / 255.0
+        dst_a = dst_chunk[:, :, 3:4] / 255.0
+
+        out_a = src_a + dst_a * (1.0 - src_a)
+        out_rgb = src_rgb * src_a + dst_rgb * dst_a * (1.0 - src_a)
+        out_rgb[out_a[:, :, 0] > 0.0] = (out_rgb / out_a)[out_a[:, :, 0] > 0.0]
+        out_rgb[out_a[:, :, 0] == 0.0] = 0.0
+
+        canvas_comp[y_l:y_r, x_l:x_r, 0:3] = np.array(out_rgb, dtype=np.uint8)
+        canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
+
+        # clear scratch
+        canvas_draw[y_l:y_r, x_l:x_r, :] = 0.0
 
 
 def disk_segments(x_axis, z_axis, radius, n_points):
