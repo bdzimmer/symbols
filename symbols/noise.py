@@ -161,12 +161,11 @@ def noise_geom(
 
 
 def draw(
-        coords, depths, age_tail, age_head,
+        coords, age_tail, age_head,
 
         max_life,
         trail_length,
         particle_size,
-        depth_sort,
 
         color_func,   # color given 0.0-1.0 age value
         canvas_draw,  # function for drawing on canvas
@@ -175,12 +174,7 @@ def draw(
 
     """draw a bunch of particles"""
 
-    if depth_sort:
-        sorted_idxs = np.argsort(depths)
-    else:
-        sorted_idxs = range(coords.shape[0])
-
-    for p_idx in sorted_idxs:
+    for p_idx in range(coords.shape[0]):
 
         p_age_tail = age_tail[p_idx]
         p_age_head = age_head[p_idx]
