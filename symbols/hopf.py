@@ -64,11 +64,19 @@ def draw_fibration(
 
     canvas_shape = (canvas.shape[1], canvas.shape[0])
 
-    pts_0, pts_1, colors = light_and_flatten_geometry(
+    pts_0, pts_1, colors, depths = light_and_flatten_geometry(
         pts, norms, idxs_0, idxs_1, color,
         cam_trans, view_pos, canvas_shape)
 
-    draw_segments(canvas, pts_0, pts_1, colors, line_width)
+    # sort by depths
+    sorted_idxs = np.argsort(depths)
+
+    draw_segments(
+        canvas,
+        pts_0[:, sorted_idxs],
+        pts_1[:, sorted_idxs],
+        colors[:, sorted_idxs],
+        line_width)
 
 
 def fibration_geom(
@@ -177,7 +185,8 @@ def fibration_geom(
 
 
 def light_and_flatten_geometry(
-        pts, norms, idxs_0, idxs_1, color,
+        pts, norms, idxs_0, idxs_1,
+        lighting_func,
         cam_trans, view_pos, canvas_shape):
 
     """
@@ -190,25 +199,7 @@ def light_and_flatten_geometry(
     width, height = canvas_shape
     p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
 
-    # compare normals against z-axis (direction camera is pointing)
-    # TODO: update for generic camera / lighting
-    vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
-    # TODO: why am I not using dot here???
-    norms_dot = np.sum(norms * vec, axis=0, keepdims=True)
-
-    # sort of backface culling effect (segments "facing" away invisible)
-    # color_scale = np.clip(diffs_norm_dot, 0.0, 1.0)
-
-    # clip may not be necessary here
-    # TODO: make the below configurable
-    # (lighting calculations)
-    color_scale = np.clip(norms_dot, 0.0, 1.0)
-    # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
-    color_scale = color_scale ** 4
-
-    colors = np.array(color)[:, np.newaxis] * color_scale
-    colors[3, :] = color[3]
-    # colors = np.array(colors, dtype=np.uint8)
+    colors = lighting_func(pts, norms)
 
     # apply perspective transformation
     pts_c = transforms.transform(cam_trans, pts)
@@ -225,14 +216,30 @@ def light_and_flatten_geometry(
     # my gut says mean is better
     depths = (pts[2, idxs_0] + pts[2, idxs_1]) * 0.5
 
-    # sort by depths
-    sorted_idxs = np.argsort(depths)
+    return pts_0, pts_1, colors, depths
 
-    return (
-        pts_0[:, sorted_idxs],
-        pts_1[:, sorted_idxs],
-        colors[:, sorted_idxs],
-        sorted_idxs)
+
+def lighting_func_generic(norms, color, power, transparent):
+    """paramaterized sort of generic lighting function"""
+
+    # compare normals against z-axis (direction camera is pointing)
+    vec = np.array([0.0, 0.0, 1.0])[:, np.newaxis]
+
+    # TODO: why am I not using dot here???
+    norms_dot = np.sum(norms * vec, axis=0, keepdims=True)
+
+    color_scale = np.clip(norms_dot, 0.0, 1.0)
+    # color_scale = np.clip(np.abs(norms_dot), 0.0, 1.0)
+    color_scale = color_scale ** power
+
+    colors = np.array(color)[:, np.newaxis] * color_scale
+
+    if transparent:
+        colors[3, :] = color[3]
+    else:
+        colors[3, :] = 255.0
+
+    return colors
 
 
 def draw_segments(canvas, pts_0, pts_1, colors, line_width):

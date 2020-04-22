@@ -43,8 +43,6 @@ def build_line_emitter(lines: List[symbols.Line], weights) -> Callable[[], Point
     lengths_total = sum(lengths)
     probs = [x / lengths_total for x in lengths]
 
-
-
     idxs = list(range(len(lines)))
 
     def emit():

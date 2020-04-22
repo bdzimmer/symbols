@@ -62,6 +62,7 @@ def ramp(x):
         return 15.0 / 8.0 * x - 10.0 / 8.0 * x * x * x + 3.0 / 8.0 * x * x * x * x * x
 
 
+
 def draw_frame(
         canvas,
         p_poss,     # list of particle positions at each timestep
@@ -80,11 +81,48 @@ def draw_frame(
         prof        # profiler
         ):
 
+    prof.tick("trans")
+
+    coords, depths, age_tail, age_head = noise_geom(
+        canvas,
+        p_poss,
+        actives,
+        cam_trans,
+        view_pos
+    )
+
+    prof.tock("trans")
+
+    prof.tick("draw")
+
+    canvas_draw, canvas_draw_get = build_draw_func(canvas)
+
+    draw(
+        coords, depths, age_tail, age_head,
+        max_life,
+        trail_length,
+        particle_size,
+        depth_sort,
+        color_func,
+        canvas_draw,
+    )
+
+    canvas = canvas_draw_get()
+
+    return canvas
+
+
+def noise_geom(
+        canvas,
+        p_poss,     # list of particle positions at each timestep
+        actives,    # list of which particles are active at each timestep
+        cam_trans,  # camera transform
+        view_pos,   # view position
+        ):
+
     """
     Draw a single frame of particles on a canvas image, modifying it in-place.
     """
-
-    prof.tick("trans")
 
     height, width, _ = canvas.shape
     p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
@@ -109,19 +147,33 @@ def draw_frame(
         # TODO: build a list of particles to render, with depths
         p_pos_ps.append((p_pos_p, p_pos_c[2, :]))  # smaller z is farther away
 
-    prof.tock("trans")
-
     # ~~~~ ~~~~ ~~~~ ~~~~
-
-    prof.tick("draw")
-
-    canvas_draw, canvas_draw_get = build_draw_func(canvas)
 
     # stack arrays
 
     coords = np.concatenate([x[0] for x in p_pos_ps], axis=0)
     depths = np.concatenate([x[1] for x in p_pos_ps], axis=0)
     actives_head = np.concatenate([p_poss[-1][1] for _ in range(len(p_poss))], axis=0)
+    age_tail = actives        # age at current tail position?
+    age_head = actives_head   # age at head in current frame?
+
+    return coords, depths, age_tail, age_head
+
+
+def draw(
+        coords, depths, age_tail, age_head,
+
+        max_life,
+        trail_length,
+        particle_size,
+        depth_sort,
+
+        color_func,   # color given 0.0-1.0 age value
+        canvas_draw,  # function for drawing on canvas
+
+    ):
+
+    """draw a bunch of particles"""
 
     if depth_sort:
         sorted_idxs = np.argsort(depths)
@@ -130,8 +182,8 @@ def draw_frame(
 
     for p_idx in sorted_idxs:
 
-        p_age_tail = actives[p_idx]         # age at current tail position?
-        p_age_head = actives_head[p_idx]    # age at head in current frame?
+        p_age_tail = age_tail[p_idx]
+        p_age_head = age_head[p_idx]
 
         if -1 < p_age_tail <= max_life and p_age_head > -1:
             age_diff = p_age_head - p_age_tail  # age difference between head and tail
@@ -139,12 +191,6 @@ def draw_frame(
             color = color_func(color_scale)
             x, y = coords[p_idx, :]
             canvas_draw((x, y), particle_size, color)
-
-    canvas = canvas_draw_get()
-
-    prof.tock("draw")
-
-    return canvas
 
 
 def ethereal_color_func(age):
