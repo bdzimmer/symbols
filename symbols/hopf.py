@@ -325,8 +325,23 @@ def draw_segment_transparent(
         pt_0, pt_1, color, line_width,
         composite,
         canvas_comp,  # canvas being drawn onto
-        canvas_draw   # temp canvas
+        canvas_draw,   # temp canvas
+        erase
     ):
+
+    blur_size = 31
+
+    if blur_size > 0:
+        # set up for alpha blending
+        color_mod = (color[0], color[1], color[2], 0)
+        cv2.line(
+            canvas_draw,
+            pt_0,
+            pt_1,
+            color_mod,
+            line_width + blur_size // 2,
+            # cv2.LINE_AA
+        )
 
     cv2.line(
         canvas_draw,
@@ -334,7 +349,8 @@ def draw_segment_transparent(
         pt_1,
         color,
         line_width,
-        cv2.LINE_AA)
+        # cv2.LINE_AA
+    )
 
     if composite:
         x_0 = int(pt_0[0])
@@ -342,12 +358,23 @@ def draw_segment_transparent(
         x_1 = int(pt_1[0])
         y_1 = int(pt_1[1])
 
+        if blur_size > 0:
+            line_width = line_width + blur_size // 2
+
         x_l = min(x_0, x_1) - line_width - 1
         y_l = min(y_0, y_1) - line_width - 1
         x_r = max(x_0, x_1) + line_width + 1
         y_r = max(y_0, y_1) + line_width + 1
 
         src_chunk = canvas_draw[y_l:y_r, x_l:x_r, :]
+
+        if blur_size > 0:
+            blurred = cv2.GaussianBlur(
+                src_chunk, (blur_size, blur_size), 0)
+            if blurred is not None:
+                # src_chunk = blurred
+                src_chunk = np.clip(blurred * 2.0 + src_chunk, 0.0, 255.0)
+
         dst_chunk = canvas_comp[y_l:y_r, x_l:x_r, :]
         src_rgb = src_chunk[:, :, 0:3]
         dst_rgb = dst_chunk[:, :, 0:3]
@@ -363,7 +390,8 @@ def draw_segment_transparent(
         canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
 
         # clear scratch
-        canvas_draw[y_l:y_r, x_l:x_r, :] = 0.0
+        if erase:
+            canvas_draw[y_l:y_r, x_l:x_r, :] = 0.0
 
 
 def disk_segments(x_axis, z_axis, radius, n_points):
