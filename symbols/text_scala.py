@@ -30,8 +30,6 @@ def draw(
         border_size: Tuple[int, int]) -> np.array:
     """draw text using external tool"""
 
-    print(stroke_width, border_size)
-
     id_object = (text, font, stroke_width, border_size)
     id_string = compute_hash(id_object)
 

@@ -21,7 +21,6 @@ BORDER_DEFAULT = (0, 0)
 
 def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fill):
     """draw text on an image, mutating it"""
-    print("blimp_text", image.size)
     if USE_PIL:
         draw = ImageDraw.Draw(image)
         draw.text(

@@ -19,7 +19,7 @@ from symbols import blimp_text
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
-DEBUG_GUIDES = True
+DEBUG_GUIDES = False
 
 if os.name == "nt":
     FONTS_DIRNAME = ""
@@ -362,7 +362,7 @@ def text_custom_kerning(
 def text_standard(text, font, color, stroke_width, stroke_fill):
     """standard text rendering"""
     size = blimp_text.getsize(font, text)
-    image = Image.new("RGBA", (size[0], size[1]), (255, 255, 255, 0))
+    image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
     # draw = ImageDraw.Draw(image)
     # draw.text(
     #     xy=(0, 0),
@@ -382,7 +382,7 @@ def text_standard(text, font, color, stroke_width, stroke_fill):
     return image
 
 
-def render_layer(layer, resources_dirname):
+def render_layer(layer, resources_dirname) -> np.ndarray:
     """render a single layer"""
 
     layer_type = layer["type"]
@@ -432,16 +432,32 @@ def render_layer(layer, resources_dirname):
         kern_add = layer.get("kern_add", 0)
         stroke_width = layer.get("stroke_width", 0)
         stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
+        force_custom_kerning = layer.get("force_custom_kerning", False)
+        trim_x = layer.get("trim_x", True)
 
         font = load_font(font_filename, font_size)
-        image_custom = text_custom_kerning(
-            text, font, color, stroke_width, stroke_fill, kern_add,
-            DEBUG_GUIDES)
-        if DEBUG:
+
+        if kern_add > 0 or force_custom_kerning:
+            print(f"\trendering '{text}' with custom kerning ({kern_add} px)")
+            image = text_custom_kerning(
+                text, font, color, stroke_width, stroke_fill, kern_add,
+                DEBUG_GUIDES)
+            if DEBUG:
+                image_standard = text_standard(text, font, color, stroke_width, stroke_fill)
+                image_standard.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
+                image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
+        else:
+            print(f"\trendering '{text}' with default kerning")
             image = text_standard(text, font, color, stroke_width, stroke_fill)
-            image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
-            image_custom.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
-        image = np.array(image_custom)
+
+        image = np.array(image)
+
+        if trim_x:
+            filled_idxs = np.where(np.sum(image[:, :, 3] > 0, axis=0))[0]
+            start_x = filled_idxs[0]
+            end_x = filled_idxs[-1] + 1
+            print("\ttrim x coords:", len(filled_idxs), start_x, end_x)
+            image = image[:, start_x:end_x, :]
 
     elif layer_type == "concat":
         axis = layer["axis"]
