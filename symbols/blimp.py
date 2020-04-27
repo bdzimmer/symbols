@@ -339,7 +339,8 @@ def text_custom_kerning(
         # composite stroke onto text
         image = Image.alpha_composite(image, Image.fromarray(solid_stroke_np))
 
-    if debug_guides:
+    if False and debug_guides:
+        # unfortunately, this goofs up trimming, lol.
         print("text offset:", offset)
         ascent, descent = blimp_text.getmetrics(font)
         draw = ImageDraw.Draw(image)
@@ -361,6 +362,8 @@ def text_custom_kerning(
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
     """standard text rendering"""
+    # TODO: there's potentially an issue with antialiasing here
+    # I was expecting it to just work with the new Scala text method.
     size = blimp_text.getsize(font, text)
     image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
     # draw = ImageDraw.Draw(image)
@@ -456,7 +459,7 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
             filled_idxs = np.where(np.sum(image[:, :, 3] > 0, axis=0))[0]
             start_x = filled_idxs[0]
             end_x = filled_idxs[-1] + 1
-            print("\ttrim x coords:", len(filled_idxs), start_x, end_x)
+            print("\ttrim x coords:", start_x, end_x)
             image = image[:, start_x:end_x, :]
 
     elif layer_type == "concat":
