@@ -481,6 +481,13 @@ def render_layer(layer, resources_dirname):
         image = np.ones((height, width, 4), dtype=np.uint8) * 255
         image[:, :, 3] = 0
 
+    elif layer_type == "solid":
+        height = layer.get("height")
+        width = layer.get("width")
+        color = tuple(layer.get("color", (0, 0, 0, 255)))
+        image = np.ones((height, width, 4), dtype=np.uint8) * 255
+        image[:, :, :] = color
+
     else:
         image = None
 
