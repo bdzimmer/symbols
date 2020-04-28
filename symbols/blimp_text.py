@@ -74,4 +74,4 @@ def _font_to_tuple(font: FreeTypeFont):
     """aldfjhaldkjfhlajdh"""
     font_face, font_style = font.getname()
     font_size = font.size
-    return (font_face, font_style, font_size)
+    return font_face, font_style, font_size

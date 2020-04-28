@@ -21,6 +21,9 @@ DEBUG = True
 DEBUG_DIRNAME = "scratch"
 DEBUG_GUIDES = False
 
+GUIDE_COLOR_EDGE = (0, 255, 0)
+GUIDE_COLOR_BORDER = (255, 0, 0)
+
 if os.name == "nt":
     FONTS_DIRNAME = ""
 else:
@@ -202,15 +205,15 @@ def assemble_group(
                 draw.line([(0, y), (res.size[0], y)], fill=color)
 
             # outer edges of borders
-            draw_v(layer_x - border_x, (0, 255, 0))
-            draw_v(layer_x + layer_width + border_x, (0, 255, 0))
-            draw_h(layer_y - border_y, (0, 255, 0))
-            draw_h(layer_y + layer_height + border_y, (0, 255, 0))
+            draw_v(layer_x - border_x, GUIDE_COLOR_BORDER)
+            draw_v(layer_x + layer_width + border_x, GUIDE_COLOR_BORDER)
+            draw_h(layer_y - border_y, GUIDE_COLOR_BORDER)
+            draw_h(layer_y + layer_height + border_y, GUIDE_COLOR_BORDER)
             # edges of layer proper
-            draw_v(layer_x, (0, 0, 0))
-            draw_v(layer_x + layer_width, (0, 0, 0))
-            draw_h(layer_y, (0, 0, 0))
-            draw_h(layer_y + layer_height, (0, 0, 0))
+            draw_v(layer_x, GUIDE_COLOR_EDGE)
+            draw_v(layer_x + layer_width, GUIDE_COLOR_EDGE)
+            draw_h(layer_y, GUIDE_COLOR_EDGE)
+            draw_h(layer_y + layer_height, GUIDE_COLOR_EDGE)
 
         if save_total:
             res.save(
@@ -440,6 +443,9 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
 
         font = load_font(font_filename, font_size)
 
+        font_tuple = blimp_text._font_to_tuple(font)
+        print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
+
         if kern_add > 0 or force_custom_kerning:
             print(f"\trendering '{text}' with custom kerning ({kern_add} px)")
             image = text_custom_kerning(
@@ -459,8 +465,10 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
             filled_idxs = np.where(np.sum(image[:, :, 3] > 0, axis=0))[0]
             start_x = filled_idxs[0]
             end_x = filled_idxs[-1] + 1
-            print("\ttrim x coords:", start_x, end_x)
+            print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
             image = image[:, start_x:end_x, :]
+
+        print(f"\tfinal dimensions: ({image.shape[1]}, {image.shape[0]})")
 
     elif layer_type == "concat":
         axis = layer["axis"]
