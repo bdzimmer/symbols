@@ -16,7 +16,7 @@ from symbols import text_scala
 USE_PIL = False
 
 # TODO: THIS SHOULD NOT BE 0, 0
-BORDER_DEFAULT = (0, 0)
+BORDER_DEFAULT = (16, 16)
 
 
 def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fill):
