@@ -164,7 +164,7 @@ def render_and_composite(layers, resources_dirname, im_bg):
     im_layer = blimp.assemble_group(
         [canvas_layer] + layers,
         canvas_width, canvas_height, resources_dirname, True, False, False, None, None,
-        False)
+        [])
 
     # composite
     im_comp = Image.fromarray(im_bg_chunk)

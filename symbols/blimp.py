@@ -19,7 +19,7 @@ from symbols import blimp_text
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
-DEBUG_GUIDES = False
+DEBUG_GUIDES = True
 
 GUIDE_COLOR_EDGE = (0, 255, 0)
 GUIDE_COLOR_BORDER = (255, 0, 0)
@@ -59,12 +59,13 @@ def main(argv):
                 canvas_width = config["width"]
                 canvas_height = config["height"]
                 resources_dirname = config["resources_dirname"]
+                debug_guides = config.get("debug_guides", [])
 
                 start_time = time.time()
                 res = assemble_group(
                     config["layers"], canvas_width, canvas_height, resources_dirname, False,
                     save_layer, save_total, project_dirname, "",
-                    DEBUG_GUIDES)
+                    debug_guides)
 
                 end_time = time.time()
                 total_time = end_time - start_time
@@ -84,12 +85,13 @@ def main(argv):
         canvas_width = config["width"]
         canvas_height = config["height"]
         resources_dirname = config["resources_dirname"]
+        debug_guides = config.get("debug_guides", [])
 
         start_time = time.time()
         res = assemble_group(
             config["layers"], canvas_width, canvas_height, resources_dirname, False,
             save_layer, save_total, project_dirname, "",
-            DEBUG_GUIDES)
+            debug_guides)
 
         Image.fromarray(res[:, :, 0:3]).save(
             os.path.join(
@@ -189,10 +191,7 @@ def assemble_group(
         image_pil = Image.fromarray(layer_image_trimmed)
         res.alpha_composite(image_pil, (layer_x - border_x, layer_y - border_y))
 
-        if debug_guides:
-            # draw outer edges of borders in green and edges of
-            # layer proper in black. Green lines should not be
-            # visible if borders have size zero.
+        if layer_idx in debug_guides:
 
             draw = ImageDraw.Draw(res)
 
@@ -500,7 +499,7 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
         image = assemble_group(
             sub_layers, width, height, resources_dirname, True,
             False, False, None, None,
-            False)
+            [])
 
     elif layer_type == "empty":
         height = layer.get("height")
