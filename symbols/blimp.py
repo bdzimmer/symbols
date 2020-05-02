@@ -440,9 +440,13 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
         force_custom_kerning = layer.get("force_custom_kerning", False)
         trim_x = layer.get("trim_x", True)
 
-        font = load_font(font_filename, font_size)
+        if isinstance(font_filename, str):
+            font = load_font(font_filename, font_size)
+            font_tuple = blimp_text._font_to_tuple(font)
+        else:
+            font = load_font(font_filename[0], font_size), font_filename[1]
+            font_tuple = blimp_text._font_to_tuple(font[0])
 
-        font_tuple = blimp_text._font_to_tuple(font)
         print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
 
         if kern_add > 0 or force_custom_kerning:

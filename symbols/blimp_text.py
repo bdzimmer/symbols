@@ -70,8 +70,16 @@ def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
         return info["ascent"], info["descent"]
 
 
-def _font_to_tuple(font: FreeTypeFont):
+def _font_to_tuple(font):
     """aldfjhaldkjfhlajdh"""
-    font_face, font_style = font.getname()
-    font_size = font.size
+
+    if isinstance(font, FreeTypeFont):
+        font_face, font_style = font.getname()
+        font_size = font.size
+        font_style = font_style.lower()
+    else:
+        font_face, _ = font[0].getname()
+        font_size = font[0].size
+        font_style = font[1]
+
     return font_face, font_style, font_size
