@@ -33,7 +33,7 @@ def test_draw():
     assert img.shape == (151, 299, 4)
 
     if DEBUG_VISUALIZE:
-        debugutil.show(img, "test_draw: draw")
+        debugutil.show(img, "draw")
 
     _debug_save_image(Image.fromarray(img), "text_scala_0.png")
 
@@ -55,7 +55,7 @@ def test_draw_on_image():
     assert info["stroke"] == 1.0
 
     if DEBUG_VISUALIZE:
-        debugutil.show_comparison(img_org, img, "test_draw: draw_on_image")
+        debugutil.show_comparison(img_org, img, "draw_on_image")
 
     _debug_save_image(img, "text_scala_1.png")
 
