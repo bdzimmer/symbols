@@ -47,7 +47,7 @@ def draw_fibration(
         base_points, fiber_points,
         obj_trans,                     # transform of object
         cam_trans, view_pos,           # camera and viewer positions
-        lighting_func, line_width,             # visual appearance
+        lighting_func, line_width,     # visual appearance
         decoration_func,               # generate additional stuff on fibers
         decoration_only
         ):

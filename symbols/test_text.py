@@ -4,144 +4,142 @@ Tests for text rendering functionality.
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
-import unittest
-
 import os
+from typing import Callable
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-from symbols import text
-from symbols import blimp  # TODO: move load_font into it's own location
+from symbols import blimp, text, text_scala
 
 DEBUG = True
-SCRATCH_DIRNAME = "text_scratch"
+SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
 
 
-class TestsText(unittest.TestCase):
-    """tests for text rendering functionality"""
+def test_size():
+    """test size calculation"""
+    font = blimp.load_font("consola.ttf", 16)
+    width, height = text.size("Hello, world!", font)
+    assert width == 117
+    assert height == 15
 
-    def test_size(self):
-        """test size calculation"""
-        font = blimp.load_font("consola.ttf", 16)
-        width, height = text.size("Hello, world!", font)
-        self.assertEqual(width, 117)
-        self.assertEqual(height, 15)
 
-    def test_wrap(self):
-        """test wrap calculations"""
-        font = blimp.load_font("consola.ttf", 18)
-        # font = blimp.load_font("times.ttf", 16)
+def test_wrap():
+    """test wrap calculations"""
+    font = blimp.load_font("consola.ttf", 18)
+    # font = blimp.load_font("times.ttf", 16)
 
-        message = (
-            "Summerfield foresaw none of this. But he was not swept along " +
-            "by the zeitgiest of Xanthe, as his detractors diminish him. He " +
-            "created the political movement that culminated in the Battle of " +
-            "Concord and the end of the War on Mars. Four hundred years later, " +
-            "the time is ripe for a new movement. But we cannot trust fate to " +
-            "bring us another prophet like him. We all must be " +
-            "prepared--individually--to act decisively as he did.")
+    message = (
+        "Summerfield foresaw none of this. But he was not swept along " +
+        "by the zeitgiest of Xanthe, as his detractors diminish him. He " +
+        "created the political movement that culminated in the Battle of " +
+        "Concord and the end of the War on Mars. Four hundred years later, " +
+        "the time is ripe for a new movement. But we cannot trust fate to " +
+        "bring us another prophet like him. We all must be " +
+        "prepared--individually--to act decisively as he did.")
 
-        width_max = 480
-        lines = text.wrap_text(message, font, width_max)
-        height = text.font_line_height(font) * len(lines)
+    width_max = 480
+    lines = text.wrap_text(message, font, width_max)
+    height = text.font_line_height(font) * len(lines)
 
-        im_bg = Image.new("RGBA", (width_max, height), (0, 0, 0, 255))
-        print(im_bg.size)
+    im_bg = Image.new("RGBA", (width_max, height), (0, 0, 0, 255))
 
-        def im_func(x):
-            """helper"""
-            x = text.l_to_rgba(x, (0, 0, 255))
-            fg = Image.new("RGBA", im_bg.size, (255, 255, 255, 0))
-            fg.paste(Image.fromarray(x))
-            x = Image.alpha_composite(im_bg, fg)
-            x = np.array(x)
-            return x
+    def im_func(img):
+        """helper"""
+        img = text.l_to_rgba(img, (0, 0, 255))
+        im_fg = Image.new("RGBA", im_bg.size, (255, 255, 255, 0))
+        im_fg.paste(Image.fromarray(img))
+        img = Image.alpha_composite(im_bg, im_fg)
+        img = np.array(img)
+        return img
 
-        if DEBUG:
-            os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-            offsets = [text.offset(x, font) for x in lines]
-            text.animate(SCRATCH_DIRNAME, lines[0:2], offsets, font, width_max, im_func, 1, 0)
+    if DEBUG:
+        scratch_dirname = os.path.join(SCRATCH_DIRNAME, "wrap")
+        os.makedirs(scratch_dirname, exist_ok=True)
+        offsets = [text.offset(x, font) for x in lines]
+        text.animate(scratch_dirname, lines[0:2], offsets, font, width_max, im_func, 1, 0)
 
-    def test_alignment(self):
-        """Draw examples for debugging text alignment issues."""
 
-        font = blimp.load_font("Cinzel-Regular.ttf", 48)
-        font_scala = ("Cinzel", "plain", 48)
-        border_size = (32, 32)
+def test_alignment():
+    """Draw examples for debugging text alignment issues."""
 
-        # 2020-03-22
+    font = blimp.load_font("Cinzel-Regular.ttf", 48)
+    font_scala = ("Cinzel", "plain", 48)
+    border_size = (32, 32)
 
-        # These samples demonstrate a one pixel shift off the baseline
-        # using Cinzel Regular size 48 when using PIL's simple font
-        # drawing functionality
+    # 2020-03-22
 
-        # The shift happens on the first zero of 2020, and all of the
-        # glyphs shift upward.
+    # These samples demonstrate a one pixel shift off the baseline
+    # using Cinzel Regular size 48 when using PIL's simple font
+    # drawing functionality
 
-        # The shift does not necessarily happen for other font sizes,
-        # such as 49 and 64.
+    # The shift happens on the first zero of 2020, and all of the
+    # glyphs shift upward.
 
-        def draw_pil(im, text_cur, pos_x, pos_y):
-            """draw text with PIL"""
-            draw = ImageDraw.Draw(im)
-            draw.text(
-                (pos_x, pos_y),
-                text_cur,
-                font=font,
-                fill=(255, 255, 255))
-            size_x, size_y = text.size(text_cur, font)
-            # offset_x, offset_y = text.offset(text_cur, font)
-            line_height = text.font_line_height(font)
-            ascent, descent = font.getmetrics()
-            return size_x, size_y, ascent, descent, line_height
+    # The shift does not necessarily happen for other font sizes,
+    # such as 49 and 64.
 
-        def draw_scala(im, text_cur, pos_x, pos_y):
-            """draw text with scala"""
-            from symbols import text_scala
-            info = text_scala.draw_on_image(
-                im,
-                (pos_x, pos_y),
-                text_cur,
-                font=font_scala,
-                fill=(255, 255, 255),
-                border_size=border_size,
-                stroke_width=0)
-            size_x = info["width"]
-            size_y = info["height"]
-            ascent = info["ascent"]
-            descent = info["descent"]
-            line_height = ascent + descent
-            return size_x, size_y, ascent, descent, line_height
+    def draw_pil(img, text_cur, pos_x, pos_y):
+        """draw text with PIL"""
+        draw = ImageDraw.Draw(img)
+        draw.text(
+            (pos_x, pos_y),
+            text_cur,
+            font=font,
+            fill=(255, 255, 255))
+        size_x, size_y = text.size(text_cur, font)
+        # offset_x, offset_y = text.offset(text_cur, font)
+        line_height = text.font_line_height(font)
+        ascent, descent = font.getmetrics()
+        return size_x, size_y, ascent, descent, line_height
 
-        texts_all = [
-            "April",
-            "2020",
-            "April 2020",
-            "april",
-            "april 2020",
-            "a",
-            "ap",
-            "apr",
-            "apri",
-            "april",
-            "april ",
-            "april 2",
-            "april 20",
-            "april 202",
-            "april 2020"
-        ]
+    def draw_scala(img, text_cur, pos_x, pos_y):
+        """draw text with scala"""
+        info = text_scala.draw_on_image(
+            img,
+            (pos_x, pos_y),
+            text_cur,
+            font=font_scala,
+            fill=(255, 255, 255),
+            border_size=border_size,
+            stroke_width=0)
+        size_x = info["width"]
+        size_y = info["height"]
+        ascent = info["ascent"]
+        descent = info["descent"]
+        line_height = ascent + descent
+        return size_x, size_y, ascent, descent, line_height
 
-        # texts_all = ["AVIARY", "aviary", "To"]
+    texts_all = [
+        "April",
+        "2020",
+        "April 2020",
+        "april",
+        "april 2020",
+        "a",
+        "ap",
+        "apr",
+        "apri",
+        "april",
+        "april ",
+        "april 2",
+        "april 20",
+        "april 202",
+        "april 2020"
+    ]
 
-        start_x = 50
-        start_y = 50
+    # some examples that are nice for testing at kerning:
+    # texts_all = ["AVIARY", "aviary", "To"]
+
+    start_x = 50
+    start_y = 50
+
+    for draw_method in ["pil", "scala"]:
+        im_bg = Image.new("RGBA", (2000, 320), (0, 0, 0))
+
+        draw_func = draw_scala if draw_method == "scala" else draw_pil
         pos_x = start_x
         pos_y = start_y
-
-        im_bg = Image.new("RGBA", (1600, 320), (0, 0, 0))
-
-        draw_func = draw_scala
 
         for idx, text_cur in enumerate(texts_all):
             # large image
@@ -150,31 +148,31 @@ class TestsText(unittest.TestCase):
             pos_x = pos_x + size_x + 50
 
             # small images
-            im = Image.new("RGBA", (480, 320), (0, 0, 0))
+            img = Image.new("RGBA", (480, 320), (0, 0, 0))
             _ = _draw_text_with_info(
-                im, text_cur, start_x, start_y, draw_func)
-            _debug_save_image(im, f"align_{idx}.png")
+                img, text_cur, start_x, start_y, draw_func)
+            _debug_save_image(img, "align", f"align_{idx}_{draw_method}.png")
 
-        _debug_save_image(im_bg, "align_all.png")
+        _debug_save_image(im_bg, ".", f"align_all_{draw_method}.png")
 
 
-def _debug_save_image(im: Image, filename: str):
+def _debug_save_image(img: Image, subdirname: str, filename: str):
     """save an image"""
     if DEBUG:
-        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
-        im.save(output_filename)
+        scratch_dirname = os.path.join(SCRATCH_DIRNAME, subdirname)
+        os.makedirs(scratch_dirname, exist_ok=True)
+        output_filename = os.path.join(scratch_dirname, filename)
+        img.save(output_filename)
 
 
-def _draw_text_with_info(im, text_cur, pos_x, pos_y, draw_func):
+def _draw_text_with_info(
+        img: Image, text_cur: str, pos_x: int, pos_y: int, draw_func: Callable):
     """draw text with info lines for debugging"""
 
-    draw = ImageDraw.Draw(im)
+    draw = ImageDraw.Draw(img)
 
-    res = draw_func(im, text_cur, pos_x, pos_y)
+    res = draw_func(img, text_cur, pos_x, pos_y)
     size_x, size_y, ascent, descent, line_height = res
-
-    # ~~~
 
     # draw various horizontal lines
 
