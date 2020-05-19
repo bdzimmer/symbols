@@ -5,137 +5,168 @@ Imtegration tests for compositing functionality.
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
 import os
-import unittest
+import sys
 
 import cv2
 import numpy as np
 from PIL import Image
 
-from symbols import blimp    # TODO: refactor and import library funcs instead
+from symbols import blimp
 
 # reused stuff
 RESOURCES_DIRNAME = [
     "C:/Ben/Google Drive/art",
-    "/media/ben/Storage/Ben/Google Drive/art"][0]
+    "/home/ben/Google Drive/art"][1]
 
 DEBUG = True
 
+# There's currently some issues with this set to false
+FORCE_CUSTOM_KERNING = True
 
-class TestsComposite(unittest.TestCase):
-    """Tests for compositing."""
+CANVAS_WIDTH = 3000
+CANVAS_HEIGHT = 500
 
-    def test_text(self):
-        """Test various text use cases."""
+SCRATCH_DIRNAME = os.path.join("test_scratch", "composite")
 
-        bg_filename = os.path.join(
-            RESOURCES_DIRNAME,
-            "unsplash",
-            "bonnie-kittle-aQnyyf-4uZQ-unsplash.jpg")
 
-        im_bg = cv2.imread(bg_filename)
-        if im_bg is None:
-            print("background image not found")
-            exit()
+def test_text():
+    """Test various text use cases."""
 
-        im_bg = blimp.add_alpha(im_bg)
+    if DEBUG:
+        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
 
-        # ~~~~ example 0: text with stroke
+    bg_filename = os.path.join(
+        RESOURCES_DIRNAME,
+        "unsplash",
+        "bonnie-kittle-aQnyyf-4uZQ-unsplash.jpg")
 
-        layer_text = {
+    im_bg = cv2.imread(bg_filename)
+    if im_bg is None:
+        print("background image not found")
+        sys.exit()
+
+    im_bg = blimp.add_alpha(im_bg)
+
+    # ~~~~ example 0: text with stroke
+
+    layer_text = {
+        "type": "text",
+        "text": "PROVIDENCE",
+        "font": "Orbitron-Bold.ttf",
+        "size": 350,
+        # TODO: alpha in text color is broken
+        "color": (0, 0, 0),  # (0, 0, 0, 255),
+        "force_custom_kerning": FORCE_CUSTOM_KERNING,
+        "stroke_width": 3,
+        "stroke_fill": (0, 0, 255, 255)
+    }
+
+    # TODO: appears that fill / stroke are not working together
+
+    im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+
+    assert len(im_comp.shape) == 3
+    assert im_comp.dtype == np.ubyte
+    assert len(im_text.shape) == 3
+    assert im_text.dtype == np.ubyte
+    assert im_comp.shape == (CANVAS_HEIGHT, CANVAS_WIDTH, 4)
+
+    if DEBUG:
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_0.png"), im_text)
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_0.png"), im_comp)
+
+    # ~~~~ example 1: text with double-sided glow
+
+    # Also note, due to the way that borders are handled, these layers should line
+    # up automatically no matter which size stroke is defined on each.
+    # Not sure how borders factor in.
+
+    layers_text = [
+        {
             "type": "text",
             "text": "PROVIDENCE",
             "font": "Orbitron-Bold.ttf",
             "size": 350,
-            "color": (0, 0, 0, 255),  # text_color,
-            "stroke_width": 3,
-            "stroke_fill": (0, 0, 255, 255)
-        }
-
-        im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
-
-        self.assertEqual(len(im_comp.shape), 3)
-        self.assertEqual(im_comp.dtype, np.ubyte)
-        self.assertEqual(len(im_text.shape), 3)
-        self.assertEqual(im_text.dtype, np.ubyte)
-        self.assertEqual(im_comp.shape, (400, 3000, 4))
-
-        if DEBUG:
-            cv2.imwrite("text_0.png", im_text)
-            cv2.imwrite("comp_0.png", im_comp)
-
-        # ~~~~ example 1: text with double-sided glow
-
-        # Also note, due to the way that borders are handled, these layers should line
-        # up automatically no matter which size stroke is defined on each.
-        # Not sure how borders factor in.
-
-        layers_text = [
-            {
-                "type": "text",
-                "text": "PROVIDENCE",
-                "font": "Orbitron-Bold.ttf", "size": 350, "color": (40, 40, 40, 255),
-                "border_x": 32, "border_y": 32
-            },
-            {
-                "type": "text",
-                "text": "PROVIDENCE",
-                "font": "Orbitron-Bold.ttf", "size": 350, "color": (0, 0, 0, 0),
-                "stroke_width": 4, "stroke_fill": (255, 0, 255, 255),
-                "border_x": 32, "border_y": 32,
-                "effects": [
-                    {"type": "glow", "dilate": 4, "blur": 63, "color": (255, 0, 255)}
-                ]
-            }
-        ]
-
-        im_black = np.zeros((600, 3000, 4), dtype=np.uint8)
-        im_black[:, :, 3] = 255
-        im_text, im_comp = render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
-
-        if DEBUG:
-            cv2.imwrite("text_1.png", im_text)
-            cv2.imwrite("comp_1.png", im_comp)
-
-        # ~~~~ example 2: text with inner glow
-
-        # I thought this would be straightforward with mask / mask_onto,
-        # but I was wrong. A project for another time.
-
-        # ~~~~ example 3: masked text with outer glow
-
-        # Note that because the glow is greated from edge detection on the masked
-        # image, it's uneven due to the texture. To get an even glow, need another
-        # layer. See the other examples.
-
-        layer_text = {
+            "color": (40, 40, 40),  # alpha 255
+            "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            "border_x": 32,
+            "border_y": 32
+        },
+        {
             "type": "text",
             "text": "PROVIDENCE",
             "font": "Orbitron-Bold.ttf",
             "size": 350,
-            "color": (0, 0, 255, 255),  # when masking, the text color should not matter and not show
-            "border_x": 32, "border_y": 32,
+            "color": (0, 0, 0),  # alpha 0
+            "stroke_width": 4,
+            "stroke_fill": (255, 0, 255),  # alpha 255
+            "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            "border_x": 32,
+            "border_y": 32,
             "effects": [
-                {
-                    "type": "mask_onto",
-                    "layer": {
-                        "type": "image",
-                        "filename": "unsplash/austin-templeton-TWMnY0rtvoo-unsplash.jpg"
-                    }
-                },
                 {
                     "type": "glow",
                     "dilate": 4,
-                    "blur": 31,
-                    "only": False
+                    "blur": 63,
+                    "color": (255, 0, 255)
                 }
             ]
         }
+    ]
 
-        im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+    im_black = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 4), dtype=np.uint8)
+    im_black[:, :, 3] = 255
+    im_text, im_comp = render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
 
-        if DEBUG:
-            cv2.imwrite("text_3.png", im_text)
-            cv2.imwrite("comp_3.png", im_comp)
+    # TODO: there's a shift here that's incorrect
+
+    if DEBUG:
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_1.png"), im_text)
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_1.png"), im_comp)
+
+    # ~~~~ example 2: text with inner glow
+
+    # I thought this would be straightforward with mask / mask_onto,
+    # but I was wrong. A project for another time.
+
+    # ~~~~ example 3: masked text with outer glow
+
+    # Note that because the glow is greated from edge detection on the masked
+    # image, it's uneven due to the texture. To get an even glow, need another
+    # layer. See the other examples.
+
+    layer_text = {
+        "type": "text",
+        "text": "PROVIDENCE",
+        "font": "Orbitron-Bold.ttf",
+        "size": 350,
+        # when masking, the text color should not matter and not show
+        "color": (0, 0, 255),  # 255 alpha;
+        "force_custom_kerning": FORCE_CUSTOM_KERNING,
+        "border_x": 32,
+        "border_y": 32,
+        "effects": [
+            {
+                "type": "mask_onto",
+                "layer": {
+                    "type": "image",
+                    "filename": "unsplash/austin-templeton-TWMnY0rtvoo-unsplash.jpg"
+                }
+            },
+            {
+                "type": "glow",
+                "dilate": 4,
+                "blur": 31,
+                "only": False
+            }
+        ]
+    }
+
+    im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+
+    if DEBUG:
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_3.png"), im_text)
+        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_3.png"), im_comp)
 
 
 def render_and_composite(layers, resources_dirname, im_bg):
@@ -155,15 +186,14 @@ def render_and_composite(layers, resources_dirname, im_bg):
     # im_bg_chunk = blimp.add_alpha(im_bg_chunk)
     #
 
-    canvas_width = 3000
-    canvas_height = 400
-    canvas_layer = {"type": "empty", "width": canvas_width, "height": canvas_height}
+    canvas_layer = {"type": "empty", "width": CANVAS_WIDTH, "height": CANVAS_HEIGHT}
 
-    im_bg_chunk = im_bg[0:canvas_height, 0:canvas_width]
+    im_bg_chunk = im_bg[0:CANVAS_HEIGHT, 0:CANVAS_WIDTH]
 
     im_layer = blimp.assemble_group(
         [canvas_layer] + layers,
-        canvas_width, canvas_height, resources_dirname, True, False, False, None, None,
+        CANVAS_WIDTH, CANVAS_HEIGHT,
+        resources_dirname, True, False, False, None, None,
         [])
 
     # composite

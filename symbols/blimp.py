@@ -175,6 +175,11 @@ def assemble_group(
         layer_image_trimmed, layer_x, layer_y = trim(
             layer_image, layer_x, layer_y, canvas_width, canvas_height)
 
+        print()
+        print("\ttrimmed shape:", layer_image_trimmed.shape)
+        print("\tlogical coords:", layer_x, layer_y)
+        print("\tactual coords: ", layer_x - border_x, layer_y - border_y)
+
         if save_layer:
             image_pil = Image.fromarray(layer_image_trimmed)
             image_pil.save(
@@ -664,6 +669,7 @@ def expand_border_layer(layer_image, layer):
         # are expanding the border by to compensate for the increased size
         stroke_width = layer.get("stroke_width", 0)
         if layer["type"] == "text" and stroke_width > 0:
+            print("\tshifting border expansion to compensate for stroke width")
             layer_image = expand_border(
                 layer_image, border_x - stroke_width, border_y - stroke_width)
         else:
