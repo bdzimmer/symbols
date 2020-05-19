@@ -10,10 +10,10 @@ import os
 
 from PIL import Image
 
-from symbols import text_scala
-
+from symbols import text_scala, debugutil
 
 DEBUG = True
+DEBUG_VISUALIZE = os.environ.get("DEBUG_VISUALIZE") == "true"
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text_scala")
 
 
@@ -32,6 +32,9 @@ def test_draw():
 
     assert img.shape == (151, 299, 4)
 
+    if DEBUG_VISUALIZE:
+        debugutil.show(img, "test_draw: draw")
+
     _debug_save_image(Image.fromarray(img), "text_scala_0.png")
 
 
@@ -39,6 +42,7 @@ def test_draw_on_image():
     """test draw_on_image"""
     font = ("Cinzel", "plain", 64)
     img = Image.new("RGBA", (640, 480), (0, 0, 0))
+    img_org = img.copy()
     info = text_scala.draw_on_image(
         img, (64, 64), "AVIARY", font, (0, 0, 255), 1, (32, 32))
 
@@ -49,6 +53,9 @@ def test_draw_on_image():
     assert info["borderX"] == 32
     assert info["borderY"] == 32
     assert info["stroke"] == 1.0
+
+    if DEBUG_VISUALIZE:
+        debugutil.show_comparison(img_org, img, "test_draw: draw_on_image")
 
     _debug_save_image(img, "text_scala_1.png")
 
