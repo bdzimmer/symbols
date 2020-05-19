@@ -66,7 +66,7 @@ class TestsText(unittest.TestCase):
     def test_alignment(self):
         """Draw examples for debugging text alignment issues."""
 
-        # font = blimp.load_font("Cinzel-Regular.ttf", 48)
+        font = blimp.load_font("Cinzel-Regular.ttf", 48)
         font_scala = ("Cinzel", "plain", 48)
         border_size = (32, 32)
 

@@ -47,7 +47,7 @@ def draw_fibration(
         base_points, fiber_points,
         obj_trans,                     # transform of object
         cam_trans, view_pos,           # camera and viewer positions
-        color, line_width,             # visual appearance
+        lighting_func, line_width,             # visual appearance
         decoration_func,               # generate additional stuff on fibers
         decoration_only
         ):
@@ -65,7 +65,7 @@ def draw_fibration(
     canvas_shape = (canvas.shape[1], canvas.shape[0])
 
     pts_0, pts_1, colors, depths = light_and_flatten_geometry(
-        pts, norms, idxs_0, idxs_1, color,
+        pts, norms, idxs_0, idxs_1, lighting_func,
         cam_trans, view_pos, canvas_shape)
 
     # sort by depths
