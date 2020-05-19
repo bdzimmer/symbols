@@ -6,29 +6,56 @@ Test text functions.
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
-import unittest
-
-import cv2
-from symbols import text_scala as text_scala
+import os
 
 from PIL import Image
 
+from symbols import text_scala
 
-class TestsTextScala(unittest.TestCase):
-    """Tests for text_scala"""
 
-    def test_draw(self):
-        """test draw"""
-        font = ("Cinzel", "plain", 64)
-        im, info = text_scala.draw("AVIARY", font, 0, (32, 32))
-        print(info)
-        print(im.shape)
-        cv2.imwrite("text_scala_0.png", im)
+DEBUG = True
+SCRATCH_DIRNAME = os.path.join("test_scratch", "text_scala")
 
-    def test_draw_on_image(self):
-        """test draw_on_image"""
-        font = ("Cinzel", "plain", 64)
-        im = Image.new("RGBA", (640, 480), (0, 0, 0))
-        text_scala.draw_on_image(
-            im, (64, 64), "AVIARY", font, (0, 0, 255), 1, (32, 32))
-        im.save("text_scala_1.png")
+
+def test_draw():
+    """test draw"""
+    font = ("Cinzel", "plain", 64)
+    img, info = text_scala.draw("AVIARY", font, 0, (32, 32))
+
+    assert info["ascent"] == 63
+    assert info["descent"] == 24
+    assert info["width"] == 235
+    assert info["height"] == 87
+    assert info["borderX"] == 32
+    assert info["borderY"] == 32
+    assert info["stroke"] == 0.0
+
+    assert img.shape == (151, 299, 4)
+
+    _debug_save_image(Image.fromarray(img), "text_scala_0.png")
+
+
+def test_draw_on_image():
+    """test draw_on_image"""
+    font = ("Cinzel", "plain", 64)
+    img = Image.new("RGBA", (640, 480), (0, 0, 0))
+    info = text_scala.draw_on_image(
+        img, (64, 64), "AVIARY", font, (0, 0, 255), 1, (32, 32))
+
+    assert info["ascent"] == 63
+    assert info["descent"] == 24
+    assert info["width"] == 235
+    assert info["height"] == 87
+    assert info["borderX"] == 32
+    assert info["borderY"] == 32
+    assert info["stroke"] == 1.0
+
+    _debug_save_image(img, "text_scala_1.png")
+
+
+def _debug_save_image(img: Image, filename: str):
+    """save an image"""
+    if DEBUG:
+        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
+        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
+        img.save(output_filename)
