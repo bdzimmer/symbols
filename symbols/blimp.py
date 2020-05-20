@@ -333,10 +333,16 @@ def text_custom_kerning(
     return im_text
 
 
-def text_standard(text: str, font: Any, color: Tuple, stroke_width: int, stroke_fill: Tuple):
+def text_standard(
+        text: str,
+        font: Any,
+        color: Tuple,
+        stroke_width: int,
+        stroke_fill: Tuple) -> Image.Image:
     """standard text rendering"""
-
     # returns an RGBA image
+    # this is basically a wrapper to get at a common interface with PIL ImageDraw.
+    # will simplify once we leave PIL behind for good.
 
     size = blimp_text.getsize(font, text)
     image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
@@ -348,6 +354,7 @@ def text_standard(text: str, font: Any, color: Tuple, stroke_width: int, stroke_
         fill=color,
         stroke_width=stroke_width,
         stroke_fill=stroke_fill)
+
     return image
 
 
