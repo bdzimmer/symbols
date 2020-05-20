@@ -93,21 +93,21 @@ def draw_on_image(
     im_text = colorize(im_text[:, :, 3], fill)
 
     # alpha blend using PIL
-    print("drawing text onto image via alpha blending")
-    print("im_text shape:", im_text.shape)
-    print("im_dest mode: ", im_dest.mode)
+    # print("drawing text onto image via alpha blending")
+    # print("im_text shape:", im_text.shape)
+    # print("im_dest mode: ", im_dest.mode)
 
     im_text_pil = Image.fromarray(im_text)
 
     if im_dest.mode != "RGBA":
-        print("pasting")
+        # print("pasting")
         im_dest.paste(
             Image.fromarray(np.array(im_text_pil)[:, :, 0:3]),
             # im_text_pil.convert("RGB"),
             pos_adj,
             im_text_pil.split()[3])
     else:
-        print("compositing")
+        # print("compositing")
         im_text_inter = Image.new("RGBA", im_dest.size, (0, 0, 0, 0))
         # paste is allowed to be negative coords
         # while alpha compositing is not
@@ -129,16 +129,6 @@ def draw_on_image(
     return info
 
 
-# def colorize(im: np.array, color: Color) -> np.array:
-#     """colorize a white / alpha image"""
-#     im = np.copy(im)
-#     # colorize everyting except the alpha channel
-#     im[:, :, 0:3] = color
-#     # set all completely transparent pixels to (something, 0)
-#     im[im[:, :, 3] == 0, 0:3] = (0, 0, 0)
-#     return im
-
-
 def colorize(alpha: np.array, color: Tuple) -> np.array:
     """colorize an alpha image"""
     # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
@@ -152,7 +142,6 @@ def colorize(alpha: np.array, color: Tuple) -> np.array:
     # that "np.array()" around "alpha / 255.0" is important
     # and I'm not sure why
     res[:, :, 3] = res[:, :, 3] * np.array(alpha / 255.0)
-    print("sum:", np.sum(res))
 
     # set all completely transparent pixels to (something, 0)
     res[res[:, :, 3] == 0, 0:3] = (0, 0, 0)

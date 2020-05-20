@@ -281,64 +281,55 @@ def text_custom_kerning(
         print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
-    alpha_text = Image.new("L", (width_total, height_total), 0)
-    alpha_stroke = Image.new("L", (width_total, height_total), 0)
+    im_text = Image.new("RGBA", (width_total, height_total), 0)
+    im_stroke = Image.new("RGBA", (width_total, height_total), 0)
+
+    # TODO: figure out vertical offset for stroke
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
         blimp_text.text(
-            image=alpha_text,
+            image=im_text,
             xy=(offset, 0),
             text_str=letter,
             font=font,
-            fill=(255, 255, 255),
+            fill=color,
             stroke_width=stroke_width,
             stroke_fill=(255, 255, 255))
         blimp_text.text(
-            image=alpha_stroke,
+            image=im_stroke,
             xy=(offset, 0),
             text_str=letter,
             font=font,
             fill=(0, 0, 0),
             stroke_width=stroke_width,
-            stroke_fill=(255, 255, 255))
+            stroke_fill=stroke_fill)
 
         offset = offset + letter_width + kern_add
 
-    # TODO: replace calls to create alphas / colorize
-    # with calls appropriate fill colors.
-
-    # build text layer
-    image = Image.fromarray(
-        text_scala.colorize(np.array(alpha_text), color))
-
     if stroke_width > 0:
-        # build stroke layer
-        solid_stroke = Image.fromarray(
-            text_scala.colorize(np.array(alpha_stroke), stroke_fill))
-
         # composite stroke onto text
-        image = Image.alpha_composite(image, solid_stroke)
+        im_text = Image.alpha_composite(im_text, im_stroke)
 
     if False and debug_guides:
         # unfortunately, this goofs up trimming, lol.
         print("text offset:", offset)
         ascent, descent = blimp_text.getmetrics(font)
-        draw = ImageDraw.Draw(image)
+        draw = ImageDraw.Draw(im_text)
         # draw baseline
-        draw.line([(0, ascent), (image.size[0] - 1, ascent)], fill=(0, 0, 0))
+        draw.line([(0, ascent), (im_text.size[0] - 1, ascent)], fill=(0, 0, 0))
         # draw lines at edges of image
         # draw baseline
-        draw.line([(0, 0), (image.size[0] - 1, 0)], fill=(0, 0, 0))
-        draw.line([(0, image.size[1] - 1), (image.size[0] - 1, image.size[1] - 1)], fill=(0, 0, 0))
-        draw.line([(0, 0), (0, image.size[1] - 1)], fill=(0, 0, 0))
-        draw.line([(image.size[0] - 1, 0), (image.size[0] - 1, image.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(0, 0), (im_text.size[0] - 1, 0)], fill=(0, 0, 0))
+        draw.line([(0, im_text.size[1] - 1), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(0, 0), (0, im_text.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(im_text.size[0] - 1, 0), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=(0, 0, 0))
 
     # debugging
     # cv2.imwrite("text.png", solid_text_np)
     # cv2.imwrite("stroke.png", solid_stroke_np)
 
-    return image
+    return im_text
 
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
