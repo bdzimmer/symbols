@@ -47,7 +47,7 @@ def test_wrap():
     def im_func(img):
         """helper"""
         img = text.l_to_rgba(img, (0, 0, 255))
-        im_fg = Image.new("RGBA", im_bg.size, (255, 255, 255, 0))
+        im_fg = Image.new("RGBA", im_bg.size, (0, 0, 0, 0))
         im_fg.paste(Image.fromarray(img))
         img = Image.alpha_composite(im_bg, im_fg)
         img = np.array(img)

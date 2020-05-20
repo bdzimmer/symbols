@@ -15,7 +15,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
-from symbols import blimp_text
+from symbols import blimp_text, text_scala
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
@@ -115,7 +115,7 @@ def assemble_group(
     start_time = time.time()
 
     if canvas_alpha:
-        res = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 0))
+        res = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))  # (255, 255, 255, 0))
     else:
         res = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 255))
 
@@ -281,25 +281,11 @@ def text_custom_kerning(
         print("stroke width:   ", stroke_width)
         print("width_total:    ", width_total)
 
-    # improved font rendering
-    # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
-
-    # image = Image.new("RGBA", (width_total, height_total), (255, 255, 255, 0))
     alpha_text = Image.new("L", (width_total, height_total), 0)
-    # draw_text = ImageDraw.Draw(alpha_text)
-
     alpha_stroke = Image.new("L", (width_total, height_total), 0)
-    # draw_stroke = ImageDraw.Draw(alpha_stroke)
 
     offset = 0 - offset_x_first
     for letter, letter_width in zip(text, widths):
-        # draw_text.text(
-        #     xy=(offset, 0),
-        #     text=letter,
-        #     font=font,
-        #     fill="white",
-        #     stroke_width=stroke_width,
-        #     stroke_fill="white")
         blimp_text.text(
             image=alpha_text,
             xy=(offset, 0),
@@ -308,13 +294,6 @@ def text_custom_kerning(
             fill=(255, 255, 255),
             stroke_width=stroke_width,
             stroke_fill=(255, 255, 255))
-        # draw_stroke.text(
-        #     xy=(offset, 0),
-        #     text=letter,
-        #     font=font,
-        #     fill="black",
-        #     stroke_width=stroke_width,
-        #     stroke_fill="white")
         blimp_text.text(
             image=alpha_stroke,
             xy=(offset, 0),
@@ -326,25 +305,20 @@ def text_custom_kerning(
 
         offset = offset + letter_width + kern_add
 
-    # build text layer
-    solid_text = Image.new("RGBA", (width_total, height_total), color)
-    solid_text_np = np.array(solid_text)
-    solid_text_np[:, :, 3] = solid_text_np[:, :, 3] * (np.array(alpha_text) / 255.0)
-    # set all completely transparent pixels to (255, 255, 255, 0)
-    solid_text_np[solid_text_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
+    # TODO: replace calls to create alphas / colorize
+    # with calls appropriate fill colors.
 
-    image = Image.fromarray(solid_text_np)
+    # build text layer
+    image = Image.fromarray(
+        text_scala.colorize(np.array(alpha_text), color))
 
     if stroke_width > 0:
         # build stroke layer
-        solid_stroke = Image.new("RGBA", (width_total, height_total), stroke_fill)
-        solid_stroke_np = np.array(solid_stroke)
-        solid_stroke_np[:, :, 3] = solid_stroke_np[:, :, 3] * (np.array(alpha_stroke) / 255.0)
-        # set all completely transparent pixels to (255, 255, 255, 0)
-        solid_stroke_np[solid_stroke_np[:, :, 3] == 0, 0:3] = (255, 255, 255)
+        solid_stroke = Image.fromarray(
+            text_scala.colorize(np.array(alpha_stroke), stroke_fill))
 
         # composite stroke onto text
-        image = Image.alpha_composite(image, Image.fromarray(solid_stroke_np))
+        image = Image.alpha_composite(image, solid_stroke)
 
     if False and debug_guides:
         # unfortunately, this goofs up trimming, lol.
@@ -369,18 +343,8 @@ def text_custom_kerning(
 
 def text_standard(text, font, color, stroke_width, stroke_fill):
     """standard text rendering"""
-    # TODO: there's potentially an issue with antialiasing here
-    # I was expecting it to just work with the new Scala text method.
     size = blimp_text.getsize(font, text)
     image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
-    # draw = ImageDraw.Draw(image)
-    # draw.text(
-    #     xy=(0, 0),
-    #     text=text,
-    #     font=font,
-    #     fill=color,
-    #     stroke_width=stroke_width,
-    #     stroke_fill=stroke_fill)
     blimp_text.text(
         image=image,
         xy=(0, 0),
@@ -684,7 +648,8 @@ def expand_border(image, border_x, border_y):
     res = Image.new(
         "RGBA",
         (image.shape[1] + 2 * border_x, image.shape[0] + 2 * border_y),
-        (255, 255, 255, 0))
+        (0, 0, 0, 0),  # (255, 255, 255, 0)
+    )
 
     res = np.array(res)
     lim_y = res.shape[0] - border_y if border_y > 0 else res.shape[0]
@@ -695,7 +660,12 @@ def expand_border(image, border_x, border_y):
 
 
 def expand_down_right(image, new_x, new_y):
-    res = Image.new("RGBA", (new_x, new_y), (255, 255, 255, 0))
+    res = Image.new(
+        "RGBA",
+        (new_x, new_y),
+        # (255, 255, 255, 0),
+        (0, 0, 0, 0)
+    )
     res = np.array(res)
     res[0:image.shape[0], 0:image.shape[1]] = image
     return res

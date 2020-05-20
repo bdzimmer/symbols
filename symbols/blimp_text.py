@@ -31,10 +31,14 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
             stroke_width=stroke_width,
             stroke_fill=stroke_fill)
     else:
-        # note that fill works differently here than PIL
-        # I think that's ok
+        # Note: text_scala does not support both fill and stroke at the same time.
+        # If stroke_width > 0, fill is the color of the stroke.
+
+        if stroke_width > 0:
+            fill = stroke_fill
+
         text_scala.draw_on_image(
-            im=image,
+            im_dest=image,
             pos=xy,
             text=text_str,
             font=_font_to_tuple(font),

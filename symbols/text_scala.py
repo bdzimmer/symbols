@@ -16,6 +16,7 @@ from PIL import Image
 
 Font = Tuple[str, str, int]
 Color = Tuple[int, int, int]
+ColorRGBA = Tuple[int, int, int, int]
 
 IMAGE_DIRNAME = "text_cache"
 BIN_DIRNAME = [
@@ -66,7 +67,7 @@ def draw(
 
 
 def draw_on_image(
-        im: Image,
+        im_dest: Image.Image,
         pos: Tuple[int, int],
         text: str,
         font: Font,
@@ -88,28 +89,76 @@ def draw_on_image(
     pos_adj = (pos[0] - border_size[0], pos[1] - border_size[1])
 
     # colorize
-    im_text = colorize(im_text, fill)
+    # im_text = colorize(im_text, fill)
+    im_text = colorize(im_text[:, :, 3], fill)
 
     # alpha blend using PIL
-    if len(im.size) > 2:
-        im_text_pil = Image.fromarray(im_text)
-        im.alpha_composite(im_text_pil, pos_adj)
+    print("drawing text onto image via alpha blending")
+    print("im_text shape:", im_text.shape)
+    print("im_dest mode: ", im_dest.mode)
+
+    im_text_pil = Image.fromarray(im_text)
+
+    if im_dest.mode != "RGBA":
+        print("pasting")
+        im_dest.paste(
+            Image.fromarray(np.array(im_text_pil)[:, :, 0:3]),
+            # im_text_pil.convert("RGB"),
+            pos_adj,
+            im_text_pil.split()[3])
     else:
-        im_text_pil = Image.fromarray(im_text[:, :, 3])
-        im_mask_pil = Image.fromarray(im_text[:, :, 3] > 0)
-        im.paste(im_text_pil, pos_adj, mask=im_mask_pil)
+        print("compositing")
+        im_text_inter = Image.new("RGBA", im_dest.size, (0, 0, 0, 0))
+        # paste is allowed to be negative coords
+        # while alpha compositing is not
+        im_text_inter.paste(
+            Image.fromarray(np.array(im_text_pil)[:, :, 0:3]),
+            # im_text_pil.convert("RGB"),
+            pos_adj,
+            im_text_pil.split()[3])
+        im_dest.alpha_composite(im_text_inter, (0, 0))
+        # was simply this:
+        # im_dest.alpha_composite(im_text_pil, pos_adj)
+
+    # print("drawing text onto image via masked paste")
+    # print("position:", pos_adj)
+    # im_text_pil = Image.fromarray(im_text[:, :, 3])
+    # im_mask_pil = Image.fromarray(im_text[:, :, 3] > 0)
+    # im_dest.paste(im_text_pil, pos_adj, mask=im_mask_pil)
 
     return info
 
 
-def colorize(im: np.array, color: Color) -> np.array:
-    """colorize a white / alpha image"""
-    im = np.copy(im)
-    # colorize everyting
-    im[:, :, 0:3] = color
+# def colorize(im: np.array, color: Color) -> np.array:
+#     """colorize a white / alpha image"""
+#     im = np.copy(im)
+#     # colorize everyting except the alpha channel
+#     im[:, :, 0:3] = color
+#     # set all completely transparent pixels to (something, 0)
+#     im[im[:, :, 3] == 0, 0:3] = (0, 0, 0)
+#     return im
+
+
+def colorize(alpha: np.array, color: Tuple) -> np.array:
+    """colorize an alpha image"""
+    # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
+
+    res = np.zeros((alpha.shape[0], alpha.shape[1], 4), dtype=np.ubyte)
+    if len(color) == 3:
+        color = (color[0], color[1], color[2], 255)
+    res[:, :, 0:4] = color
+
+    # scale by the alpha
+    # that "np.array()" around "alpha / 255.0" is important
+    # and I'm not sure why
+    res[:, :, 3] = res[:, :, 3] * np.array(alpha / 255.0)
+    print("sum:", np.sum(res))
+
     # set all completely transparent pixels to (something, 0)
-    im[im[:, :, 3] == 0, 0:3] = (0, 0, 0)
-    return im
+    res[res[:, :, 3] == 0, 0:3] = (0, 0, 0)
+
+    return res
+
 
 
 def compute_hash(val: Any) -> str:

@@ -58,7 +58,7 @@ def test_text():
         "color": (0, 0, 0),  # (0, 0, 0, 255),
         "force_custom_kerning": FORCE_CUSTOM_KERNING,
         "stroke_width": 3,
-        "stroke_fill": (0, 0, 255, 255)
+        "stroke_fill": (255, 0, 0, 255)
     }
 
     # TODO: appears that fill / stroke are not working together
@@ -89,6 +89,8 @@ def test_text():
             "size": 350,
             "color": (40, 40, 40),  # alpha 255
             "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            "x": 64,
+            "y": 64,
             "border_x": 32,
             "border_y": 32
         },
@@ -101,6 +103,8 @@ def test_text():
             "stroke_width": 4,
             "stroke_fill": (255, 0, 255),  # alpha 255
             "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            "x": 64,
+            "y": 64,
             "border_x": 32,
             "border_y": 32,
             "effects": [
@@ -117,8 +121,6 @@ def test_text():
     im_black = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 4), dtype=np.uint8)
     im_black[:, :, 3] = 255
     im_text, im_comp = render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
-
-    # TODO: there's a shift here that's incorrect
 
     if DEBUG:
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_1.png"), im_text)
