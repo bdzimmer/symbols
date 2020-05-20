@@ -26,9 +26,9 @@ def pipe(*funcs):
     return piped
 
 
-def apply(x, *funcs):
+def apply(arg, *funcs):
     """apply a series of functions"""
-    return pipe(*funcs)(x)
+    return pipe(*funcs)(arg)
 
 
 def unzip(iterable):
@@ -38,10 +38,4 @@ def unzip(iterable):
 
 def function_param_order(func):
     """get names of args infunction signature"""
-    return inspect.signature(func).parameters.keys()
-
-
-def partial(func):
-    def wrapper(*args, **kwargs):
-        return lambda x: func(x, *args, **kwargs)
-    return wrapper
+    return list(inspect.signature(func).parameters.keys())
