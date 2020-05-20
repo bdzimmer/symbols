@@ -35,10 +35,7 @@ def test_draw():
     _debug_save_image(Image.fromarray(img), "text_scala_0.png")
 
     if DEBUG_VISUALIZE:
-        im_show = Image.new("RGB", (img.shape[1], img.shape[0]), (0, 0, 0))
-        img = Image.fromarray(img)
-        im_show.paste(img.convert("RGB"), (0, 0), img.split()[3])
-        debugutil.show(im_show, "draw")
+        debugutil.show(img, "draw")
 
 
 def test_draw_on_image():

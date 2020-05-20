@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import time
+from typing import Any, Tuple
 
 import cv2
 from PIL import Image, ImageFont, ImageDraw
@@ -30,7 +31,7 @@ else:
     FONTS_DIRNAME = os.path.expanduser("~/.fonts")
 
 
-def main(argv):
+def main(argv): # pragma: no cover
     """main program"""
 
     # TODO: command line parameters
@@ -332,8 +333,11 @@ def text_custom_kerning(
     return im_text
 
 
-def text_standard(text, font, color, stroke_width, stroke_fill):
+def text_standard(text: str, font: Any, color: Tuple, stroke_width: int, stroke_fill: Tuple):
     """standard text rendering"""
+
+    # returns an RGBA image
+
     size = blimp_text.getsize(font, text)
     image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
     blimp_text.text(
@@ -500,7 +504,7 @@ def memoize(fn):
 
 
 @memoize
-def load_font(filename, font_size):
+def load_font(filename: str, font_size: int) -> ImageFont.FreeTypeFont:
     """load a font"""
     font_filename = os.path.join(FONTS_DIRNAME, filename)
     return ImageFont.truetype(font_filename, font_size)

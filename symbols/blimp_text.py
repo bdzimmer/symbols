@@ -15,7 +15,6 @@ from symbols import text_scala
 
 USE_PIL = False
 
-# TODO: THIS SHOULD NOT BE 0, 0
 BORDER_DEFAULT = (16, 16)
 
 
@@ -33,6 +32,8 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
     else:
         # Note: text_scala does not support both fill and stroke at the same time.
         # If stroke_width > 0, fill is the color of the stroke.
+        # Note that the if doing stroke, the fill argument is not used.
+        # If doing fill, the stroke_fill argument is not used.
 
         if stroke_width > 0:
             fill = stroke_fill
