@@ -32,13 +32,13 @@ def test_draw():
 
     assert img.shape == (151, 299, 4)
 
+    _debug_save_image(Image.fromarray(img), "text_scala_0.png")
+
     if DEBUG_VISUALIZE:
         im_show = Image.new("RGB", (img.shape[1], img.shape[0]), (0, 0, 0))
         img = Image.fromarray(img)
         im_show.paste(img.convert("RGB"), (0, 0), img.split()[3])
         debugutil.show(im_show, "draw")
-
-    _debug_save_image(Image.fromarray(img), "text_scala_0.png")
 
 
 def test_draw_on_image():
@@ -57,10 +57,10 @@ def test_draw_on_image():
     assert info["borderY"] == 32
     assert info["stroke"] == 1.0
 
+    _debug_save_image(img, "text_scala_1.png")
+
     if DEBUG_VISUALIZE:
         debugutil.show_comparison(img_org, img, "draw_on_image")
-
-    _debug_save_image(img, "text_scala_1.png")
 
 
 def _debug_save_image(img: Image, filename: str):

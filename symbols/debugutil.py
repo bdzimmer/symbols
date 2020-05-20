@@ -52,7 +52,7 @@ def show_comparison(im1, im2, title):
         print("debugutil.show_comparison: cannot visualize > 3 channels")
 
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
-    cv2.resizeWindow(title, im_width * 2, im_height)
+    # cv2.resizeWindow(title, im_width * 2, im_height)
 
     im_disp = np.concatenate((im1, im2), axis=1)
 
