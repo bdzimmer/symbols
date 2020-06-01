@@ -41,7 +41,7 @@ def test_draw():
 def test_draw_on_image():
     """test draw_on_image"""
     font = ("Cinzel", "plain", 64)
-    img = Image.new("RGBA", (640, 480), (0, 0, 0))
+    img = Image.new("RGBA", (640, 480), (0, 0, 0, 0))
     img_org = img.copy()
     info = text_scala.draw_on_image(
         img, (64, 64), "AVIARY", font, (0, 0, 255), 1, (32, 32))

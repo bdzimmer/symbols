@@ -13,6 +13,10 @@ import numpy as np
 from PIL import Image
 
 BG_COLOR = (80, 80, 80)
+# BG_COLOR = (0, 0, 0)
+
+WINDOW_STYLE = cv2.WINDOW_AUTOSIZE
+# WINDOW_STYLE = cv2.WINDOW_KEEPRATIO
 
 
 def show(img, title):
@@ -22,14 +26,25 @@ def show(img, title):
         img = np.array(img)
 
     im_height, im_width, n_channels = img.shape
+
+    print("img max before flatten:  ", np.max(img[:, :, 0:3]))
+
     if n_channels > 3:
-        print("flattening alpha")
+        # print("flattening alpha")
+        print("alpha max before flatten:", np.max(img[:, :, 3]))
         img = flatten_alpha(img)
 
-    cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
+    print("img max after flatten:  ", np.max(img[:, :, 0:3]))
 
+    cv2.namedWindow(title, WINDOW_STYLE)
     cv2.imshow(title, img[:, :, [2, 1, 0]])
-    cv2.waitKey(-1)
+
+    while True:
+        k = cv2.waitKey(50)
+        if k > -1:
+            break
+        if cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) < 1:
+            break
     cv2.destroyWindow(title)
 
 
@@ -58,13 +73,17 @@ def show_comparison(im1, im2, title):
         print("flattening alpha")
         im2 = flatten_alpha(im2)
 
-    cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
-    # cv2.resizeWindow(title, im_width * 2, im_height)
+    cv2.namedWindow(title, flags=WINDOW_STYLE)
 
     im_disp = np.concatenate((im1, im2), axis=1)
-
     cv2.imshow(title, im_disp[:, :, [2, 1, 0]])
-    cv2.waitKey(-1)
+
+    while True:
+        k = cv2.waitKey(50)
+        if k > -1:
+            break
+        if cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) < 1:
+            break
     cv2.destroyWindow(title)
 
 

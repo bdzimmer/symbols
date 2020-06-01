@@ -54,6 +54,13 @@ def getsize(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
         return font.getsize(text_str)
     else:
         _, info = text_scala.draw(text_str, _font_to_tuple(font), 0, BORDER_DEFAULT)
+        # Important note! Info height and width may not include some antialiasing pixels!
+        # import numpy as np
+        # column_sums = np.sum(img, axis=0)
+        # present = np.where(column_sums > 0)[0]
+        # calculated_width = (present[-1] - present[0]) + 1
+        # print("metrics width:", info["width"])
+        # print("calculated width:", calculated_width)
         return info["width"], info["height"]
 
 
