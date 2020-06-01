@@ -8,6 +8,7 @@ Utilities for drawing and animating text.
 
 import re
 import os
+from typing import List, Any, Callable
 
 import cv2
 import numpy as np
@@ -17,11 +18,6 @@ from PIL import Image, ImageDraw
 def size(text, font):
     """get the width and height (in pixels) of a string"""
     return font.getsize(text)
-
-
-def offset(text, font):
-    """get offset"""
-    return font.getoffset(text)
 
 
 def font_line_height(font):
@@ -41,7 +37,7 @@ def wrap_text(text, font, width_max):
 
     for idx in range(1, len(words)):
         line = " ".join(words[start_idx:(idx + 1)])
-        width, height = size(line, font)
+        width, _ = size(line, font)
 
         if width > width_max:
             line_new = " ".join(words[start_idx:idx])
@@ -54,26 +50,14 @@ def wrap_text(text, font, width_max):
     return lines
 
 
-def multiline(lines, offsets, font, line_height, image_width, image_height):
+def multiline(lines, font, line_height, image_width, image_height):
     """draw multiline text using PIL ImageDraw"""
 
     image = Image.new("L", (image_width, image_height), 0)
     draw = ImageDraw.Draw(image)
 
-    for idx, (line, off) in enumerate(zip(lines, offsets)):
-        print(line, off)
-
-        # this seemed to be necessary for some lines that jumped up
-        # and down a very small amount (like 1 pixel) but is definitely
-        # wrong for text where the size / offset varies
-        # perhaps the problem was that I was using size at some point
-        # that should be ignored.
-
-        # off_curr = offset(line, font)
-        # pos_x = 0 - off_curr[0] + off[0]
-        # pos_y = idx * line_height - off_curr[1] + off[1]
-
-        # it seems like the offsets or sizes should not be necessary
+    for idx, line, in enumerate(lines):
+        print(line)
         pos_x = 0
         pos_y = idx * line_height
 
@@ -98,8 +82,19 @@ def l_to_rgba(im_l, color):
     return solid_text_np
 
 
-def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_end):
-    """animate text"""
+def animate_characters(
+        output_dirname: str,
+        lines: List[str],
+        font: Any,
+        width_max: int,
+        im_func: Callable,     # function to update the image before writing to disk
+        dup: int,              # frames per character
+        dup_end: int           # duplicate frames at end
+        ):
+    """animate text by individual characters"""
+
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
 
     line_lengths = [len(x) for x in lines]
     length_all = sum(line_lengths)
@@ -113,7 +108,7 @@ def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_e
         print(idx_frame + 1, "/", length_all)
 
         # calculate lines_mod
-        # TODO:
+        # TODO: other animation modes
         # TODO: optionally include extra "characters" for line ends
         lines_mod = []
         chars_total = 0
@@ -129,18 +124,18 @@ def animate(output_dirname, lines, offsets, font, width_max, im_func, dup, dup_e
 
         # TODO: test a case where one word is too long
 
-        im = multiline(
-            lines_mod, offsets[0:len(lines_mod)], font, line_height, width_max, image_height)
+        img = multiline(
+            lines_mod, font, line_height, width_max, image_height)
 
         for _ in range(dup):
-            im_mod = im_func(im)
+            im_mod = im_func(img)
             cv2.imwrite(
                 os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
                 im_mod)
             idx_frame_out = idx_frame_out + 1
 
     for _ in range(dup_end):
-        im_mod = im_func(im)
+        im_mod = im_func(img)
         cv2.imwrite(
             os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
             im_mod)

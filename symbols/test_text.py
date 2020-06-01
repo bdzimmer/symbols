@@ -10,7 +10,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image, ImageDraw
 
-from symbols import blimp, text, text_scala
+from symbols import blimp, text, text_scala, util
 
 DEBUG = True
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
@@ -56,12 +56,17 @@ def test_wrap():
     if DEBUG:
         scratch_dirname = os.path.join(SCRATCH_DIRNAME, "wrap")
         os.makedirs(scratch_dirname, exist_ok=True)
-        offsets = [text.offset(x, font) for x in lines]
-        text.animate(scratch_dirname, lines[0:2], offsets, font, width_max, im_func, 1, 0)
+        text.animate_characters(scratch_dirname, lines[0:2], font, width_max, im_func, 1, 0)
+        movie_filename = os.path.join(SCRATCH_DIRNAME, "wrap.mp4")
+        fps = 30
+        ffmpeg_command = util.ffmpeg_command(
+            scratch_dirname, movie_filename, width_max, height, fps)
+        os.system(ffmpeg_command)
 
 
 def test_alignment():
     """Draw examples for debugging text alignment issues."""
+    # pylint: disable=too-many-locals
 
     font = blimp.load_font("Cinzel-Regular.ttf", 48)
     font_scala = ("Cinzel", "plain", 48)
@@ -143,7 +148,7 @@ def test_alignment():
 
         for idx, text_cur in enumerate(texts_all):
             # large image
-            size_x, size_y = _draw_text_with_info(
+            size_x, _ = _draw_text_with_info(
                 im_bg, text_cur, pos_x, pos_y, draw_func)
             pos_x = pos_x + size_x + 50
 
@@ -172,7 +177,7 @@ def _draw_text_with_info(
     draw = ImageDraw.Draw(img)
 
     res = draw_func(img, text_cur, pos_x, pos_y)
-    size_x, size_y, ascent, descent, line_height = res
+    size_x, size_y, ascent, _, line_height = res
 
     # draw various horizontal lines
 
@@ -192,11 +197,6 @@ def _draw_text_with_info(
         ((0, line_height), (size_x, line_height)),
         "red")
 
-    # green at offset
-    # draw_line(
-    #     ((offset_x, offset_y), (offset_x + size_x, offset_y)),
-    #     "green")
-
     # blue at base of text
     # This should definitely be constant since it only depends
     # on the font, not the text being drawn.
@@ -206,7 +206,6 @@ def _draw_text_with_info(
 
     print("text:       ", "'" + text_cur + "'")
     print("size:       ", size_x, size_y)
-    # print("offset:     ", offset_x, offset_y)
     print("line height:", line_height)
     print()
 
