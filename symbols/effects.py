@@ -48,6 +48,18 @@ def grid(img):
     return img
 
 
+def grid_var(img, width, offset):
+    """simple grid / CRT like effect"""
+    img = np.copy(img)
+
+    # scanlines
+    img[offset::width, :, :] = 0
+    img[:, offset::width, :] = 0
+
+    return img
+
+
+
 def glow(img, size, factor):
     """glow effect"""
     blurred = np.clip(cv2.GaussianBlur(img, (size, size), 0) * factor, 0, 255)

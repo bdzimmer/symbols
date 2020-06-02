@@ -28,7 +28,7 @@ def draw(
         text: str,
         font: Font,
         stroke_width: int,
-        border_size: Tuple[int, int]) -> np.array:
+        border_size: Tuple[int, int]) -> Tuple[np.array, Dict]:
     """draw text using external tool"""
 
     id_object = (text, font, stroke_width, border_size)

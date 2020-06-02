@@ -69,6 +69,8 @@ def multiline(lines, font, line_height, image_width, image_height):
 def l_to_rgba(im_l, color):
     """create a colorized transparent image from black and white"""
 
+    # TODO: I believe this code is duplicated elsewhere
+
     totally_transparent_color = (0, 0, 0)
 
     height, width = im_l.shape
