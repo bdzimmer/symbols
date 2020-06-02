@@ -59,7 +59,6 @@ def grid_var(img, width, offset):
     return img
 
 
-
 def glow(img, size, factor):
     """glow effect"""
     blurred = np.clip(cv2.GaussianBlur(img, (size, size), 0) * factor, 0, 255)

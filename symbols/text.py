@@ -85,11 +85,11 @@ def l_to_rgba(im_l, color):
 
 
 def animate_characters(
-        output_dirname: str,
         lines: List[str],
         font: Any,
         width_max: int,
         im_func: Callable,     # function to update the image before writing to disk
+        frame_func: Callable,  # function to write frame to disk
         dup: int,              # frames per character
         dup_end: int           # duplicate frames at end
         ):
@@ -131,14 +131,16 @@ def animate_characters(
 
         for _ in range(dup):
             im_mod = im_func(img)
-            cv2.imwrite(
-                os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
-                im_mod)
+            # cv2.imwrite(
+            #     os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
+            #     im_mod)
+            frame_func(im_mod)
             idx_frame_out = idx_frame_out + 1
 
     for _ in range(dup_end):
         im_mod = im_func(img)
-        cv2.imwrite(
-            os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
-            im_mod)
+        # cv2.imwrite(
+        #     os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
+        #     im_mod)
+        frame_func(im_mod)
         idx_frame_out = idx_frame_out + 1
