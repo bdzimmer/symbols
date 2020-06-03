@@ -7,6 +7,7 @@ Tests for text rendering functionality.
 import os
 from typing import Callable
 
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -56,7 +57,13 @@ def test_wrap():
     if DEBUG:
         scratch_dirname = os.path.join(SCRATCH_DIRNAME, "wrap")
         os.makedirs(scratch_dirname, exist_ok=True)
-        text.animate_characters(scratch_dirname, lines[0:2], font, width_max, im_func, 1, 0)
+        frame_func = _build_frame_writer(scratch_dirname)
+    else:
+        frame_func = lambda x: None
+
+    text.animate_characters(lines[0:2], font, width_max, im_func, frame_func, 1, 3)
+
+    if DEBUG:
         movie_filename = os.path.join(SCRATCH_DIRNAME, "wrap.mp4")
         fps = 30
         ffmpeg_command = util.ffmpeg_command(
@@ -210,3 +217,17 @@ def _draw_text_with_info(
     print()
 
     return size_x, size_y
+
+
+def _build_frame_writer(output_dirname: str) -> Callable:
+    """frame writer"""
+    idx = [0]
+
+    def write(img: Image.Image):
+        """write and increment counter"""
+        cv2.imwrite(
+            os.path.join(output_dirname, str(idx[0]).rjust(5, "0") + ".png"),
+            img[:, :, [2, 1, 0]])
+        idx[0] = idx[0] + 1
+
+    return write

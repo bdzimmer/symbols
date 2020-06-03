@@ -125,22 +125,15 @@ def animate_characters(
                 break
 
         # TODO: test a case where one word is too long
-
         img = multiline(
             lines_mod, font, line_height, width_max, image_height)
 
         for _ in range(dup):
             im_mod = im_func(img)
-            # cv2.imwrite(
-            #     os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
-            #     im_mod)
             frame_func(im_mod)
             idx_frame_out = idx_frame_out + 1
 
     for _ in range(dup_end):
         im_mod = im_func(img)
-        # cv2.imwrite(
-        #     os.path.join(output_dirname, str(idx_frame_out).rjust(5, "0") + ".png"),
-        #     im_mod)
         frame_func(im_mod)
         idx_frame_out = idx_frame_out + 1
