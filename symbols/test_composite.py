@@ -9,9 +9,8 @@ import sys
 
 import cv2
 import numpy as np
-from PIL import Image
 
-from symbols import blimp
+from symbols import blimp, blimp_util
 
 # reused stuff
 RESOURCES_DIRNAME = [
@@ -46,6 +45,7 @@ def test_text():
         sys.exit()
 
     im_bg = blimp.add_alpha(im_bg)
+    im_bg = im_bg[0:CANVAS_HEIGHT, 0:CANVAS_WIDTH, :]
 
     # ~~~~ example 0: text with stroke
 
@@ -63,7 +63,7 @@ def test_text():
 
     # TODO: appears that fill / stroke are not working together
 
-    im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+    im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
 
     assert len(im_comp.shape) == 3
     assert im_comp.dtype == np.ubyte
@@ -120,7 +120,7 @@ def test_text():
 
     im_black = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 4), dtype=np.uint8)
     im_black[:, :, 3] = 255
-    im_text, im_comp = render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
+    im_text, im_comp = blimp_util.render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
 
     if DEBUG:
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_1.png"), im_text)
@@ -164,46 +164,11 @@ def test_text():
         ]
     }
 
-    im_text, im_comp = render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+    im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
 
     if DEBUG:
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_3.png"), im_text)
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_3.png"), im_comp)
 
 
-def render_and_composite(layers, resources_dirname, im_bg):
-    """render a layer, apply effects, and composite against a background image"""
 
-    # border_px = 64
-
-    blimp.DEBUG = False
-    # im_layer = blimp.render_layer(layer, resources_dirname)
-    # im_layer = blimp.expand_border(im_layer, border_px, border_px)
-    # for effect_idx, effect in enumerate(layer.get("effects", [])):
-    #     im_layer = blimp.apply_effect(im_layer, effect, resources_dirname)
-    #
-    # # slice out the same sized chunk from the bg image
-    # # and add alpha
-    # im_bg_chunk = im_bg[0:im_layer.shape[0], 0:im_layer.shape[1], :]
-    # im_bg_chunk = blimp.add_alpha(im_bg_chunk)
-    #
-
-    canvas_layer = {"type": "empty", "width": CANVAS_WIDTH, "height": CANVAS_HEIGHT}
-
-    im_bg_chunk = im_bg[0:CANVAS_HEIGHT, 0:CANVAS_WIDTH]
-
-    im_layer = blimp.assemble_group(
-        [canvas_layer] + layers,
-        CANVAS_WIDTH, CANVAS_HEIGHT,
-        resources_dirname, True, False, False, None, None,
-        [])
-
-    # composite
-    im_comp = Image.fromarray(im_bg_chunk)
-    im_comp.alpha_composite(Image.fromarray(im_layer))
-    im_comp = np.array(im_comp)
-
-    # TODO: add some vertical lines to ensure that things are centered properly
-    # TODO: seeing something like a one-pixel offset issue with glow
-
-    return im_layer, im_comp

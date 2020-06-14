@@ -105,7 +105,7 @@ def draw_on_image(
     return info
 
 
-def colorize(alpha: np.array, color: Tuple) -> np.array:
+def colorize(alpha: np.ndarray, color: Tuple) -> np.ndarray:
     """colorize an alpha image"""
     # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
 

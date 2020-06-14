@@ -518,7 +518,7 @@ def load_font(filename: str, font_size: int) -> ImageFont.FreeTypeFont:
 
 
 @memoize
-def load_image(filename):
+def load_image(filename: str) -> np.ndarray:
     """load an image"""
     print("loading", filename, "from disk")
     image_pil = Image.open(filename)
@@ -528,7 +528,7 @@ def load_image(filename):
     return image
 
 
-def add_alpha(image):
+def add_alpha(image: np.ndarray) -> np.ndarray:
     """add an alpha channel to an image"""
     return np.concatenate(
         (image,

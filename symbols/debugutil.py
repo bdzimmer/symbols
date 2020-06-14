@@ -87,7 +87,7 @@ def show_comparison(im1, im2, title):
     cv2.destroyWindow(title)
 
 
-def flatten_alpha(img: np.array) -> np.array:
+def flatten_alpha(img: np.ndarray) -> np.ndarray:
     """paste an image with alpha onta a solid background"""
 
     # convert and prepare PIL images
