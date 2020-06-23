@@ -23,16 +23,18 @@ def draw_line_cv(img, line):
         cv2.LINE_AA)
 
 
-def draw_circle_cv(img, circle, frac):
+def draw_circle_cv(img, circle):
     """draw a circle on an image using OpenCV"""
 
-    end_angle = frac * (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU
+    # end_angle = frac * (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU
+
     cv2.ellipse(
         img,
         to_int(circle.center),
         to_int((circle.radius, circle.radius)),
         circle.start_angle * 360.0 / symbols.TAU,
         0.0,
-        end_angle,
+        # end_angle,
+        (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU,
         circle.color,
         circle.thickness)

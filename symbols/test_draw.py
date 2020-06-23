@@ -40,7 +40,7 @@ def test_draw_circle_cv():
     circle = symbols.Circle(
         (128, 128), 64, 0.0, symbols.TAU * 0.75, (255, 0, 0), 2)
 
-    draw.draw_circle_cv(im_test, circle, 0.5)
+    draw.draw_circle_cv(im_test, circle)
 
     assert np.sum(im_test[:, :, 0]) > 0
     assert np.sum(im_test[:, :, 1]) == 0.0

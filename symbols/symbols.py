@@ -14,7 +14,13 @@ TAU = 2.0 * np.pi
 
 
 @attr.s(frozen=True)
-class Line:
+class Primitive:
+    """ABC for geometric primitives"""
+    pass
+
+
+@attr.s(frozen=True)
+class Line(Primitive):
     """a line"""
     start = attr.ib()
     end = attr.ib()
@@ -24,7 +30,7 @@ class Line:
 
 
 @attr.s(frozen=True)
-class Circle:
+class Circle(Primitive):
     """a circle or arc"""
     center = attr.ib()
     radius = attr.ib()
@@ -36,22 +42,37 @@ class Circle:
 
 
 @attr.s(frozen=True)
-class Dot:
+class Dot(Primitive):
     """a filled dot"""
     center = attr.ib()
     radius = attr.ib()
 
+    color = attr.ib()
+    thickness = attr.ib()
+
+
+# ~~~~ ~~~~ ~~~~ ~~~~
+
+# if this isn't quite right, it's close.
 
 @attr.s(frozen=True)
-class AnimVel:
+class Animation:
     primitive = attr.ib()
+    label = attr.ib()
+
+
+@attr.s(frozen=True)
+class AnimVel(Animation):
+    primitive = attr.ib()
+    label = attr.ib()
     head_vel = attr.ib()  # head velocity
     tail_vel = attr.ib()  # tail velocity
 
 
 @attr.s(frozen=True)
-class AnimDuration:
+class AnimDuration(Animation):
     primitive = attr.ib()
+    label = attr.ib()
     head_duration = attr.ib()
 
 
@@ -75,19 +96,19 @@ def add(x, y):
     return x[0] + y[0], x[1] + y[1]
 
 
+def sub(x, y):
+    """subract point tuples"""
+    return x[0] - y[0], x[1] - y[1]
+
+
+def scale(pnt, frac):
+    """scale a point"""
+    return pnt[0] * frac, pnt[1] * frac
+
+
 def to_int(x):
     """convert to integers"""
     return int(x[0]), int(x[1])
-
-
-# def points_around_circle(n_points, start, radius, center):
-#     return [
-#         func.apply(
-#             circle_point(x * TAU / n_points + start, radius),
-#             lambda p: add(p, center),
-#             to_int  # TODO: get rid of this eventually
-#         )
-#         for x in range(n_points)]
 
 
 def length(line: Line) -> float:
@@ -97,25 +118,37 @@ def length(line: Line) -> float:
     return math.sqrt(dx * dx + dy * dy)
 
 
-def line_frac(line, frac):
+def line_frac(line: Line, frac: float) -> Line:
     """transform a line into a fraction of a line"""
     new_end = interp(line.start, line.end, frac)
     return Line(line.start, new_end, line.color, line.thickness)
 
 
-# def interp(start, end, frac):
-#     """interpolate along a line"""
-#     x_diff = end[0] - start[0]
-#     y_diff = end[1] - start[1]
-#     return add(start, (frac * x_diff, frac * y_diff))
+def circle_frac(circle: Circle, frac: float) -> Circle:
+    """transform a circle into a fraction of a circle"""
+    new_end = circle.start_angle + frac * (circle.end_angle - circle.start_angle)
+    return Circle(
+        circle.center, circle.radius, circle.start_angle, new_end,
+        circle.color, circle.thickness)
 
 
 def interp(start, end, frac):
     """interpolation"""
-    diff = end - start
-    return start + (frac * diff)
+    # diff = end - start
+    # return start + (frac * diff)
+    diff = (end[0] - start[0], end[1] - start[1])
+    return (
+        start[0] + frac * diff[0],
+        start[1] + frac * diff[1])
+
+
+def scale_center(pnt, fac, center):
+    """scale point in relation to a center"""
+    return add(scale(sub(pnt, center), fac), center)
+
 
 # ~~~~ functions for constructing animations ~~~~
+
 
 def find_duration(x):
     if isinstance(x, tuple):  # parallel events
