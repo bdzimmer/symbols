@@ -20,6 +20,9 @@ BORDER_DEFAULT = (16, 16)
 
 def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fill):
     """draw text on an image, mutating it"""
+
+    # pylint: disable=too-many-arguments
+
     if USE_PIL:
         draw = ImageDraw.Draw(image)
         draw.text(
@@ -51,7 +54,7 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
 def getsize(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
     """get the size of text"""
     if USE_PIL:
-        return font.getsize(text_str)
+        size = font.getsize(text_str)
     else:
         _, info = text_scala.draw(text_str, _font_to_tuple(font), 0, BORDER_DEFAULT)
         # Important note! Info height and width may not include some antialiasing pixels!
@@ -61,25 +64,28 @@ def getsize(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
         # calculated_width = (present[-1] - present[0]) + 1
         # print("metrics width:", info["width"])
         # print("calculated width:", calculated_width)
-        return info["width"], info["height"]
+        size = (info["width"], info["height"])
+    return size
 
 
 def getoffset(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
     """get the offset of text"""
     if USE_PIL:
-        return font.getoffset(text_str)
+        offset = font.getoffset(text_str)
     else:
         # FOR NOW...because I don't think this is actually necessary
-        return 0, 0
+        offset = (0, 0)
+    return offset
 
 
 def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
     """get ascent and descent"""
     if USE_PIL:
-        return font.getmetrics()
+        metrics = font.getmetrics()
     else:
         _, info = text_scala.draw("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
-        return info["ascent"], info["descent"]
+        metrics = (info["ascent"], info["descent"])
+    return metrics
 
 
 def _font_to_tuple(font):

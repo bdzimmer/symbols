@@ -20,7 +20,7 @@ def test_draw_line_cv():
 
     im_size = (256, 256, 3)
     im_test = np.zeros(im_size)
-    line = symbols.Line((16, 16), (240, 240), (255, 0, 0), 2)
+    line = symbols.Line((16, 16), (240, 240), 2, 0, (255, 0, 0))
 
     draw.draw_line_cv(im_test, line)
 
@@ -38,7 +38,7 @@ def test_draw_circle_cv():
     im_size = (256, 256, 3)
     im_test = np.zeros(im_size)
     circle = symbols.Circle(
-        (128, 128), 64, 0.0, symbols.TAU * 0.75, (255, 0, 0), 2)
+        (128, 128), 64, 0.0, symbols.TAU * 0.75, 2, 0, (255, 0, 0))
 
     draw.draw_circle_cv(im_test, circle)
 

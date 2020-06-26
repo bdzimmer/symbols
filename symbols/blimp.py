@@ -358,6 +358,36 @@ def text_standard(
     return image
 
 
+def text_standard_border(
+        text: str,
+        border_xy: Tuple,
+        font: Any,
+        color: Tuple,
+        stroke_width: int,
+        stroke_fill: Tuple) -> Image.Image:
+    """standard text rendering"""
+
+    # border_xy is start position / border size of image
+    border_x, border_y = border_xy
+
+    size = blimp_text.getsize(font, text)
+    image = Image.new(
+        "RGBA",
+        (size[0] + border_x * 2, size[1] + border_y * 2),
+        (0, 0, 0, 0))
+
+    blimp_text.text(
+        image=image,
+        xy=border_xy,
+        text_str=text,
+        font=font,
+        fill=color,
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill)
+
+    return image
+
+
 def render_layer(layer, resources_dirname) -> np.ndarray:
     """render a single layer"""
 
@@ -644,9 +674,10 @@ def expand_border_layer(layer_image, layer):
     return layer_image, border_x, border_y
 
 
-def expand_border(image, border_x, border_y):
+def expand_border(image: np.ndarray, border_x: int, border_y: int) -> np.ndarray:
     """add a border to an image"""
 
+    # TODO: get rid of this conversion from image to ndarray...not necessary at all
     res = Image.new(
         "RGBA",
         (image.shape[1] + 2 * border_x, image.shape[0] + 2 * border_y),
