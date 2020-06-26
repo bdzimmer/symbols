@@ -152,48 +152,55 @@ def scale_center(pnt, fac, center):
 # ~~~~ functions for constructing animations ~~~~
 
 
-def find_duration(x):
-    if isinstance(x, tuple):  # parallel events
-        timed = [find_duration(y) for y in x]
+def find_duration(struct):
+    """transform a structure of Animations into TimedAnims
+    where time represents duration."""
+
+    if isinstance(struct, tuple):  # parallel events
+        timed = [find_duration(y) for y in struct]
         return tuple(timed)
-    elif isinstance(x, list): # sequential events
-        timed = [find_duration(y) for y in x]
+    elif isinstance(struct, list):  # sequential events
+        timed = [find_duration(y) for y in struct]
         return timed
-    elif isinstance(x, AnimDuration):
-        return TimedAnim(x, x.head_duration)
+    elif isinstance(struct, AnimDuration):
+        return TimedAnim(struct, struct.head_duration)
     # TODO: for velocity, calculate time based on pen travel distance
 
 
-def find_starts(x, start_time):
-    if isinstance(x, tuple):  # parallel events
-        timed = [find_starts(y, start_time) for y in x]
+def find_starts(struct, start_time):
+    """transform a structure of TimedAnims where time respresents
+    duration into a structure where time represents start.
+    """
+
+    if isinstance(struct, tuple):  # parallel events
+        timed = [find_starts(y, start_time) for y in struct]
         return tuple(timed)
-    elif isinstance(x, list):  # sequential events
+    elif isinstance(struct, list):  # sequential events
         cur_time = start_time
         timed = []
-        for y in x:
-            yt = find_starts(y, cur_time)
-            timed.append(yt)
-            print(cur_time, y.time)
-            cur_time = cur_time + y.time
+        for sub_stuct in struct:
+            starts = find_starts(sub_stuct, cur_time)
+            timed.append(starts)
+            print(cur_time, sub_stuct.time)
+            cur_time = cur_time + sub_stuct.time
         return timed
     else:
-        if isinstance(x.anim, tuple) or isinstance(x.anim, list):
-            return find_starts(x.anim, start_time)
+        if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
+            return find_starts(struct.anim, start_time)
         else:
-            return TimedAnim(x.anim, start_time)
+            return TimedAnim(struct.anim, start_time)
+        # TODO: for velocity, calculate time based on pen travel distance
 
-    # TODO: for velocity, calculate time based on pen travel distance
 
-
-# TODO: this has some issues with returns
-def flatten(x):
-    if isinstance(x, tuple):
-        return [z for y in x for z in flatten(y)]
-    elif isinstance(x, list):
-        return [z for y in x for z in flatten(y)]
-    elif isinstance(x, TimedAnim):
-        if isinstance(x.anim, tuple) or isinstance(x.anim, list):
-            return [flatten(x.anim)]
+def flatten(struct):
+    if isinstance(struct, tuple):
+        return [z for y in struct for z in flatten(y)]
+    elif isinstance(struct, list):
+        return [z for y in struct for z in flatten(y)]
+    elif isinstance(struct, TimedAnim):
+        if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
+            return [flatten(struct.anim)]
         else:
-            return [x]
+            return [struct]
+    else:
+        return None

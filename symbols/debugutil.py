@@ -6,7 +6,6 @@ Utilities for debugging.
 
 # Copryight (c) 2020 Ben Zimmer. All rights reserved.
 
-import sys
 
 import cv2
 import numpy as np
@@ -25,7 +24,7 @@ def show(img, title):
     if isinstance(img, Image.Image):
         img = np.array(img)
 
-    im_height, im_width, n_channels = img.shape
+    _, _, n_channels = img.shape
 
     print("img max before flatten:  ", np.max(img[:, :, 0:3]))
 
@@ -63,7 +62,7 @@ def show_comparison(im1, im2, title):
     im1 = np.array(im1, dtype=np.ubyte)
     im2 = np.array(im2, dtype=np.ubyte)
 
-    im_height, im_width, n_channels1 = im1.shape
+    _, _, n_channels1 = im1.shape
     n_channels2 = im2.shape[2]
 
     if n_channels1 > 3:

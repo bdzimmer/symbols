@@ -8,7 +8,6 @@ Hopf fibration functions.
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw
 
 from symbols import transforms
 

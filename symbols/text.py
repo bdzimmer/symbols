@@ -7,17 +7,10 @@ Utilities for drawing and animating text.
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
 import re
-import os
 from typing import List, Any, Callable
 
-import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-
-
-def size(text, font):
-    """get the width and height (in pixels) of a string"""
-    return font.getsize(text)
 
 
 def font_line_height(font):
@@ -37,7 +30,7 @@ def wrap_text(text, font, width_max):
 
     for idx in range(1, len(words)):
         line = " ".join(words[start_idx:(idx + 1)])
-        width, _ = size(line, font)
+        width, _ = font.getsize(line)
 
         if width > width_max:
             line_new = " ".join(words[start_idx:idx])

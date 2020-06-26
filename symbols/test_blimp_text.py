@@ -6,7 +6,6 @@ Test blimp_text
 
 # Copyright (c) 2020 Ben Zimmer. All rights resrved.
 
-from typing import Tuple
 import os
 
 from PIL import Image
@@ -81,15 +80,14 @@ def test_text_border():
     text_kern_add = 0
     debug_lines = True
 
-    def add_guides(img: np.ndarray, size: Tuple):
-        """add guides"""
-        img[border_size, :, :] = (128, 128, 128, 255)
-        img[:, border_size, :] = (128, 128, 128, 255)
-        img[border_size + size[1], :, :] = (128, 128, 128, 255)
-        img[:, border_size + size[0], :] = (128, 128, 128, 255)
+    # def add_guides(img, size):
+    #     """add guides"""
+    #     img[border_size, :, :] = (128, 128, 128, 255)
+    #     img[:, border_size, :] = (128, 128, 128, 255)
+    #     img[border_size + size[1], :, :] = (128, 128, 128, 255)
+    #     img[:, border_size + size[0], :] = (128, 128, 128, 255)
 
     for use_pil in [False, True]:
-
         blimp_text.USE_PIL = use_pil
 
         # ~~~~ standard text ~~~~

@@ -17,14 +17,6 @@ DEBUG = True
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
 
 
-def test_size():
-    """test size calculation"""
-    font = blimp.load_font("consola.ttf", 16)
-    width, height = text.size("Hello, world!", font)
-    assert width == 117
-    assert height == 15
-
-
 def test_wrap():
     """test wrap calculations"""
     font = blimp.load_font("consola.ttf", 18)
@@ -99,7 +91,7 @@ def test_alignment():
             text_cur,
             font=font,
             fill=(255, 255, 255))
-        size_x, size_y = text.size(text_cur, font)
+        size_x, size_y = font.getsize(text_cur)
         # offset_x, offset_y = text.offset(text_cur, font)
         line_height = text.font_line_height(font)
         ascent, descent = font.getmetrics()

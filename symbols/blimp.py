@@ -16,7 +16,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
-from symbols import blimp_text, text_scala
+from symbols import blimp_text
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
