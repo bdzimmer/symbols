@@ -31,7 +31,7 @@ else:
     FONTS_DIRNAME = os.path.expanduser("~/.fonts")
 
 
-def main(argv): # pragma: no cover
+def main(argv):  # pragma: no cover
     """main program"""
 
     # TODO: command line parameters
@@ -232,9 +232,11 @@ def assemble_group(
 
 
 def text_custom_kerning(
-        text, font, color, stroke_width, stroke_fill, kern_add,
+        text, border_xy, font, color, stroke_width, stroke_fill, kern_add,
         debug_guides):
     """text, controlling letter spacing"""
+
+    # TODO: get rid of the offset stuff because it's not necessary
 
     letter_sizes = [blimp_text.getsize(font, x) for x in text]
     letter_offsets = [blimp_text.getoffset(font, x) for x in text]
@@ -256,7 +258,11 @@ def text_custom_kerning(
     # TODO: y offset?
     # find maximum height
     height = max([x[1] for x in letter_sizes])
-    height_total = height + stroke_width * 2
+    height_total = (
+        height
+        + stroke_width * 2
+        + border_xy[1] * 2
+    )
 
     # TODO: add stroke width logic to original text function
 
@@ -268,6 +274,7 @@ def text_custom_kerning(
         # - offset_x_first
         + (len(widths) - 1) * kern_add
         + stroke_width * 2  # Needs to be * 2 since it is added on all sides
+        + border_xy[0] * 2
     )
 
     if False and DEBUG:
@@ -280,18 +287,20 @@ def text_custom_kerning(
         print("sum ind. widths:", sum([x[0] for x in letter_sizes]))
         print("getsize width:  ", blimp_text.getsize(font, text)[0])
         print("stroke width:   ", stroke_width)
+        print("border:         ", border_xy)
         print("width_total:    ", width_total)
 
     im_text = Image.new("RGBA", (width_total, height_total), 0)
     im_stroke = Image.new("RGBA", (width_total, height_total), 0)
 
-    # TODO: figure out vertical offset for stroke
+    # Loop through and draw letters
 
-    offset = 0 - offset_x_first
+    offset_x = 0 - offset_x_first + border_xy[0]
+    offset_y = border_xy[1]
     for letter, letter_width in zip(text, widths):
         blimp_text.text(
             image=im_text,
-            xy=(offset, 0),
+            xy=(offset_x, offset_y),
             text_str=letter,
             font=font,
             fill=color,
@@ -299,14 +308,14 @@ def text_custom_kerning(
             stroke_fill=(255, 255, 255))
         blimp_text.text(
             image=im_stroke,
-            xy=(offset, 0),
+            xy=(offset_x, offset_y),
             text_str=letter,
             font=font,
             fill=(0, 0, 0),
             stroke_width=stroke_width,
             stroke_fill=stroke_fill)
 
-        offset = offset + letter_width + kern_add
+        offset_x = offset_x + letter_width + kern_add
 
     if stroke_width > 0:
         # composite stroke onto text
@@ -314,7 +323,7 @@ def text_custom_kerning(
 
     if False and debug_guides:
         # unfortunately, this goofs up trimming, lol.
-        print("text offset:", offset)
+        print("text offset:", offset_x, offset_y)
         ascent, descent = blimp_text.getmetrics(font)
         draw = ImageDraw.Draw(im_text)
         # draw baseline
@@ -334,31 +343,6 @@ def text_custom_kerning(
 
 
 def text_standard(
-        text: str,
-        font: Any,
-        color: Tuple,
-        stroke_width: int,
-        stroke_fill: Tuple) -> Image.Image:
-    """standard text rendering"""
-    # returns an RGBA image
-    # this is basically a wrapper to get at a common interface with PIL ImageDraw.
-    # will simplify once we leave PIL behind for good.
-
-    size = blimp_text.getsize(font, text)
-    image = Image.new("RGBA", (size[0], size[1]), (0, 0, 0, 0))
-    blimp_text.text(
-        image=image,
-        xy=(0, 0),
-        text_str=text,
-        font=font,
-        fill=color,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill)
-
-    return image
-
-
-def text_standard_border(
         text: str,
         border_xy: Tuple,
         font: Any,
@@ -453,18 +437,19 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
         if kern_add > 0 or force_custom_kerning:
             print(f"\trendering '{text}' with custom kerning ({kern_add} px)")
             image = text_custom_kerning(
-                text, font, color, stroke_width, stroke_fill, kern_add,
+                text, (0, 0), font, color, stroke_width, stroke_fill, kern_add,
                 DEBUG_GUIDES)
             if DEBUG:
-                image_standard = text_standard(text, font, color, stroke_width, stroke_fill)
+                image_standard = text_standard(text, (0, 0), font, color, stroke_width, stroke_fill)
                 image_standard.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
                 image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
         else:
             print(f"\trendering '{text}' with default kerning")
-            image = text_standard(text, font, color, stroke_width, stroke_fill)
+            image = text_standard(text, (0, 0), font, color, stroke_width, stroke_fill)
 
         image = np.array(image)
 
+        # TODO: remember this trim setting!!!!
         if trim_x:
             filled_idxs = np.where(np.sum(image[:, :, 3] > 0, axis=0))[0]
             start_x = filled_idxs[0]

@@ -28,10 +28,10 @@ def test_blimp_text():
     missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
     args_list = [
-        ("AVIARY", font, missing, 2, (0, 255, 255)),
-        ("AVIARY", font, missing, 2, (0, 255, 255, 128)),
-        ("AVIARY", font, (0, 255, 255), 0, missing),
-        ("AVIARY", font, (0, 255, 255, 128), 0, missing),
+        ("AVIARY", (0, 0), font, missing, 2, (0, 255, 255)),
+        ("AVIARY", (0, 0), font, missing, 2, (0, 255, 255, 128)),
+        ("AVIARY", (0, 0), font, (0, 255, 255), 0, missing),
+        ("AVIARY", (0, 0), font, (0, 255, 255, 128), 0, missing),
     ]
 
     for args in args_list:
@@ -66,6 +66,7 @@ def test_text_border():
     text_stroke_width = 0
     text_stroke_color = missing
     border_size = 32
+    text_kern_add = 0
 
     def add_guides(img: np.ndarray):
         """add guides"""
@@ -77,12 +78,14 @@ def test_text_border():
     # we only care about scala mode here
     blimp_text.USE_PIL = False
 
+    # ~~~~ standard text ~~~~
+
     size = blimp_text.getsize(font, text)  # calculate expected size
 
     # get the text image using text_standard
 
     im_res = blimp.text_standard(
-        text, font, text_color, text_stroke_width, text_stroke_color)
+        text, (0, 0), font, text_color, text_stroke_width, text_stroke_color)
 
     assert size == im_res.size
 
@@ -94,7 +97,7 @@ def test_text_border():
 
     # get the same image with borders and add guides
 
-    im_res_border = blimp.text_standard_border(
+    im_res_border = blimp.text_standard(
         text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color)
     im_res_border = np.array(im_res_border)
     add_guides(im_res_border)
@@ -102,8 +105,40 @@ def test_text_border():
 
     assert im_res_border.size == im_res_expanded.size
 
-    # ~~~~ save stuff
+    # ~~~~ custom kerning text ~~~~
+
+    size = blimp_text.getsize(font, text)  # calculate expected size
+
+    # get the text image using text_standard
+
+    im_custom = blimp.text_custom_kerning(
+        text, (0, 0), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+
+    assert size == im_custom.size
+
+    # extend the border and add guides
+
+    im_custom_expanded = blimp.expand_border(np.array(im_custom), border_size, border_size)
+    add_guides(im_custom_expanded)
+    im_custom_expanded = Image.fromarray(im_custom_expanded)
+
+    # get the same image with borders and add guides
+
+    # TODO
+    im_custom_border = blimp.text_custom_kerning(
+        text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+    im_custom_border = np.array(im_custom_border)
+    add_guides(im_custom_border)
+    im_custom_border = Image.fromarray(im_custom_border)
+
+    assert im_custom_border.size == im_custom_expanded.size
+
+    # ~~~~ save stuff ~~~~
 
     im_res.save("text_border_standard.png")
     im_res_expanded.save("text_border_standard_expanded.png")
     im_res_border.save("text_border_standard_border.png")
+
+    im_custom.save("text_border_custom.png")
+    im_custom_expanded.save("text_border_custom_expanded.png")
+    im_custom_border.save("text_border_custom_border.png")

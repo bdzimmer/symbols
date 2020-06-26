@@ -114,18 +114,18 @@ def colorize(alpha: np.ndarray, color: Tuple) -> np.ndarray:
         color = (color[0], color[1], color[2], 255)
     res[:, :, 0:4] = color
 
-    print("colorize res alpha max #1:", np.max(res[:, :, 3]))
+    # print("colorize res alpha max #1:", np.max(res[:, :, 3]))
 
     # res[:, :, 3] = res[:, :, 3] * np.array(alpha / 255.0)
     res[:, :, 3] = color[3] / 255.0 * alpha
 
-    print("colorize res alpha max #2:", np.max(res[:, :, 3]))
+    # print("colorize res alpha max #2:", np.max(res[:, :, 3]))
 
     # set all completely transparent pixels to (something, 0)
     res[res[:, :, 3] == 0, 0:3] = (0, 0, 0)
 
-    print("colorize res image max:", np.max(res[:, :, 0:3]))
-    print("colorize res alpha max:", np.max(res[:, :, 3]))
+    # print("colorize res image max:", np.max(res[:, :, 0:3]))
+    # print("colorize res alpha max:", np.max(res[:, :, 3]))
 
     return res
 
