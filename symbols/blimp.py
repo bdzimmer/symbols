@@ -277,7 +277,7 @@ def text_custom_kerning(
         + border_xy[0] * 2
     )
 
-    if False and DEBUG:
+    if True:
         print(letter_pairs)
         print("ind widths:     ", [x[0] for x in letter_sizes])
         print("ind offsets:    ", [x[0] for x in letter_offsets])

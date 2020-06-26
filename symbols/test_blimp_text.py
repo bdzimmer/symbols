@@ -6,6 +6,7 @@ Test blimp_text
 
 # Copyright (c) 2020 Ben Zimmer. All rights resrved.
 
+from typing import Tuple
 import os
 
 from PIL import Image
@@ -14,7 +15,9 @@ import numpy as np
 from symbols import blimp, blimp_text, debugutil
 
 
+DEBUG = True
 DEBUG_VISUALIZE = os.environ.get("DEBUG_VISUALIZE") == "true"
+SCRATCH_DIRNAME = os.path.join("test_scratch", "text_border")
 
 
 def test_blimp_text():
@@ -59,86 +62,100 @@ def test_text_border():
     # TODO: also add programatic verification that font extends into border
 
     font = blimp.load_font("Cinzel-Regular.ttf", 200)
+    # font = blimp.load_font("consola.ttf", 200)
     missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
     text = "AVIARY"
-    text_color = (0, 255, 255, 128)
+    # text_color = (0, 255, 255, 128)
+    text_color = (0, 255, 255, 255)
     text_stroke_width = 0
     text_stroke_color = missing
     border_size = 32
-    text_kern_add = 0
+    text_kern_add = 32
 
-    def add_guides(img: np.ndarray):
+    def add_guides(img: np.ndarray, size: Tuple):
         """add guides"""
         img[border_size, :, :] = (128, 128, 128, 255)
         img[:, border_size, :] = (128, 128, 128, 255)
         img[border_size + size[1], :, :] = (128, 128, 128, 255)
         img[:, border_size + size[0], :] = (128, 128, 128, 255)
 
-    # we only care about scala mode here
-    blimp_text.USE_PIL = False
+    for use_pil in [False, True]:
 
-    # ~~~~ standard text ~~~~
+        blimp_text.USE_PIL = use_pil
 
-    size = blimp_text.getsize(font, text)  # calculate expected size
+        # ~~~~ standard text ~~~~
+        print()
+        print(f"standard_text use_pil={use_pil}")
+        print("----------")
 
-    # get the text image using text_standard
+        # get the text image using text_standard
 
-    im_res = blimp.text_standard(
-        text, (0, 0), font, text_color, text_stroke_width, text_stroke_color)
+        im_res = blimp.text_standard(
+            text, (0, 0), font, text_color, text_stroke_width, text_stroke_color)
 
-    assert size == im_res.size
+        # extend the border and add guides
 
-    # extend the border and add guides
+        im_res_expanded = blimp.expand_border(np.array(im_res), border_size, border_size)
+        add_guides(im_res_expanded, im_res.size)
+        im_res_expanded = Image.fromarray(im_res_expanded)
 
-    im_res_expanded = blimp.expand_border(np.array(im_res), border_size, border_size)
-    add_guides(im_res_expanded)
-    im_res_expanded = Image.fromarray(im_res_expanded)
+        # get the same image with borders and add guides
 
-    # get the same image with borders and add guides
+        im_res_border = blimp.text_standard(
+            text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color)
+        im_res_border = np.array(im_res_border)
+        add_guides(im_res_border, im_res.size)
+        im_res_border = Image.fromarray(im_res_border)
 
-    im_res_border = blimp.text_standard(
-        text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color)
-    im_res_border = np.array(im_res_border)
-    add_guides(im_res_border)
-    im_res_border = Image.fromarray(im_res_border)
+        # ~~~~ custom kerning text ~~~~
+        print()
+        print(f"custom_kerning use_pil={use_pil}")
+        print("----------")
 
-    assert im_res_border.size == im_res_expanded.size
+        # get the text image using text_standard
 
-    # ~~~~ custom kerning text ~~~~
+        im_custom = blimp.text_custom_kerning(
+            text, (0, 0), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
 
-    size = blimp_text.getsize(font, text)  # calculate expected size
+        # extend the border and add guides
 
-    # get the text image using text_standard
+        im_custom_expanded = blimp.expand_border(np.array(im_custom), border_size, border_size)
+        add_guides(im_custom_expanded, im_custom.size)
+        im_custom_expanded = Image.fromarray(im_custom_expanded)
 
-    im_custom = blimp.text_custom_kerning(
-        text, (0, 0), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+        # get the same image with borders and add guides
 
-    assert size == im_custom.size
+        im_custom_border = blimp.text_custom_kerning(
+            text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+        im_custom_border = np.array(im_custom_border)
+        add_guides(im_custom_border, im_custom.size)
+        im_custom_border = Image.fromarray(im_custom_border)
 
-    # extend the border and add guides
+        # assertions
+        # (we only care about these for certain methods)
 
-    im_custom_expanded = blimp.expand_border(np.array(im_custom), border_size, border_size)
-    add_guides(im_custom_expanded)
-    im_custom_expanded = Image.fromarray(im_custom_expanded)
+        if not use_pil:
+            assert im_res_border.size == im_res_expanded.size
+            assert im_custom_border.size == im_custom_expanded.size
+            # TODO: assert some things about running over the borders
 
-    # get the same image with borders and add guides
+        # ~~~~ save stuff ~~~~
 
-    # TODO
-    im_custom_border = blimp.text_custom_kerning(
-        text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
-    im_custom_border = np.array(im_custom_border)
-    add_guides(im_custom_border)
-    im_custom_border = Image.fromarray(im_custom_border)
+        method_str = "scala" if use_pil == False else "pil"
 
-    assert im_custom_border.size == im_custom_expanded.size
+        _debug_save_image(im_res, f"{method_str}_standard.png")
+        _debug_save_image(im_res_expanded, f"{method_str}_standard_expanded.png")
+        _debug_save_image(im_res_border, f"{method_str}_standard_border.png")
 
-    # ~~~~ save stuff ~~~~
+        _debug_save_image(im_custom, f"{method_str}_custom.png")
+        _debug_save_image(im_custom_expanded, f"{method_str}_custom_expanded.png")
+        _debug_save_image(im_custom_border, f"{method_str}_custom_border.png")
 
-    im_res.save("text_border_standard.png")
-    im_res_expanded.save("text_border_standard_expanded.png")
-    im_res_border.save("text_border_standard_border.png")
 
-    im_custom.save("text_border_custom.png")
-    im_custom_expanded.save("text_border_custom_expanded.png")
-    im_custom_border.save("text_border_custom_border.png")
+def _debug_save_image(img: Image, filename: str):
+    """save an image"""
+    if DEBUG:
+        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
+        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
+        img.save(output_filename)

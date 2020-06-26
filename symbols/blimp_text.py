@@ -54,7 +54,15 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
 def getsize(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
     """get the size of text"""
     if USE_PIL:
-        size = font.getsize(text_str)
+        # original behavior
+        # size = font.getsize(text_str)
+
+        # new behavior
+        width, _ = font.getsize(text_str)
+        ascent, descent = font.getmetrics()
+        height = ascent + descent
+        size = (width, height)
+
     else:
         _, info = text_scala.draw(text_str, _font_to_tuple(font), 0, BORDER_DEFAULT)
         # Important note! Info height and width may not include some antialiasing pixels!
@@ -73,7 +81,7 @@ def getoffset(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
     if USE_PIL:
         offset = font.getoffset(text_str)
     else:
-        # FOR NOW...because I don't think this is actually necessary
+        # FOR NOW...because I don't think this is truly necessary
         offset = (0, 0)
     return offset
 
