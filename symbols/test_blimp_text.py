@@ -106,7 +106,7 @@ def test_text_border():
         # extend the border and add guides
 
         im_res_expanded = blimp.expand_border(np.array(im_res), border_size, border_size)
-        add_guides(im_res_expanded, im_res.size)
+        # add_guides(im_res_expanded, im_res.size)
         im_res_expanded = Image.fromarray(im_res_expanded)
 
         # get the same image with borders and add guides
@@ -115,7 +115,7 @@ def test_text_border():
             text, (border_size, border_size), font, text_color,
             text_stroke_width, text_stroke_color)
         im_res_border = np.array(im_res_border)
-        add_guides(im_res_border, im_res.size)
+        # add_guides(im_res_border, im_res.size)
         im_res_border = Image.fromarray(im_res_border)
 
         # ~~~~ custom kerning text ~~~~
@@ -133,7 +133,7 @@ def test_text_border():
         # extend the border and add guides
 
         im_custom_expanded = blimp.expand_border(np.array(im_custom), border_size, border_size)
-        add_guides(im_custom_expanded, im_custom.size)
+        # add_guides(im_custom_expanded, im_custom.size)
         im_custom_expanded = Image.fromarray(im_custom_expanded)
 
         # get the same image with borders and add guides
@@ -142,13 +142,25 @@ def test_text_border():
             text, (border_size, border_size), font, text_color,
             text_stroke_width, text_stroke_color, text_kern_add, debug_lines)
         im_custom_border = np.array(im_custom_border)
-        add_guides(im_custom_border, im_custom.size)
+        # add_guides(im_custom_border, im_custom.size)
         im_custom_border = Image.fromarray(im_custom_border)
 
         assert im_res_border.size == im_res_expanded.size
         assert im_custom_border.size == im_custom_expanded.size
 
-        # TODO: assert some things about pixels extending over the borders
+        # verify that nothing lies beyond the border for the expanded version
+        # (we could test this with custom kerning as well if we disabled debug lines)
+
+        start_x, end_x = blimp.find_trim_x_indices(np.array(im_res_expanded))
+        assert start_x >= border_size
+        assert end_x <= im_res_expanded.size[0] - border_size
+
+        if font.getname() == ("Cinzel", "Regular"):
+            # serifs lie outside border
+            start_x, end_x = blimp.find_trim_x_indices(np.array(im_res_border))
+            assert start_x < border_size
+            if not use_pil:
+                assert end_x > im_res_expanded.size[0] - border_size
 
         # ~~~~ save stuff ~~~~
 

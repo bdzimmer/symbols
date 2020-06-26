@@ -453,11 +453,10 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
 
         image = np.array(image)
 
-        # TODO: remember this trim setting!!!!
+        # TODO: don't forget about this trim behavior!!!!
         if trim_x:
-            filled_idxs = np.where(np.sum(image[:, :, 3] > 0, axis=0))[0]
-            start_x = filled_idxs[0]
-            end_x = filled_idxs[-1] + 1
+            print("\ttrimming text layer")
+            start_x, end_x = find_trim_x_indices(image)
             print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
             image = image[:, start_x:end_x, :]
 
@@ -512,6 +511,17 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
         image = None
 
     return image
+
+
+def find_trim_x_indices(img: np.ndarray) -> Tuple[int, int]:
+    """Given an image, find the start and end indices to slice to
+    only keep columns with visible pixels"""
+
+    filled_idxs = np.where(np.sum(img[:, :, 3] > 0, axis=0))[0]
+    start_x = filled_idxs[0]
+    end_x = filled_idxs[-1] + 1
+
+    return start_x, end_x
 
 
 def memoize(fn):
