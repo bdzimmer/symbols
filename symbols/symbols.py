@@ -9,14 +9,15 @@ import math
 import attr
 import numpy as np
 
-
 TAU = 2.0 * np.pi
 
 
 @attr.s(frozen=True)
 class Primitive:
     """ABC for geometric primitives"""
-    pass
+    thickness = attr.ib()
+    depth = attr.ib()
+    color = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -25,8 +26,9 @@ class Line(Primitive):
     start = attr.ib()
     end = attr.ib()
 
-    color = attr.ib()
     thickness = attr.ib()
+    depth = attr.ib()
+    color = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -37,8 +39,9 @@ class Circle(Primitive):
     start_angle = attr.ib()
     end_angle = attr.ib()
 
-    color = attr.ib()
     thickness = attr.ib()
+    depth = attr.ib()
+    color = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -47,8 +50,9 @@ class Dot(Primitive):
     center = attr.ib()
     radius = attr.ib()
 
-    color = attr.ib()
     thickness = attr.ib()
+    depth = attr.ib()
+    color = attr.ib()
 
 
 # ~~~~ ~~~~ ~~~~ ~~~~
@@ -121,15 +125,13 @@ def length(line: Line) -> float:
 def line_frac(line: Line, frac: float) -> Line:
     """transform a line into a fraction of a line"""
     new_end = interp(line.start, line.end, frac)
-    return Line(line.start, new_end, line.color, line.thickness)
+    return attr.evolve(line, end=new_end)
 
 
 def circle_frac(circle: Circle, frac: float) -> Circle:
     """transform a circle into a fraction of a circle"""
     new_end = circle.start_angle + frac * (circle.end_angle - circle.start_angle)
-    return Circle(
-        circle.center, circle.radius, circle.start_angle, new_end,
-        circle.color, circle.thickness)
+    return attr.evolve(circle, end_angle=new_end)
 
 
 def interp(start, end, frac):
