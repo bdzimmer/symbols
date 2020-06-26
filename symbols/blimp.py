@@ -233,10 +233,9 @@ def assemble_group(
 
 def text_custom_kerning(
         text, border_xy, font, color, stroke_width, stroke_fill, kern_add,
-        debug_guides):
-    """text, controlling letter spacing"""
+        debug_lines):
 
-    # TODO: get rid of the offset stuff because it's not necessary
+    """text, controlling letter spacing"""
 
     letter_sizes = [blimp_text.getsize(font, x) for x in text]
     letter_offsets = [blimp_text.getoffset(font, x) for x in text]
@@ -244,40 +243,32 @@ def text_custom_kerning(
     letter_pair_sizes = [blimp_text.getsize(font, x) for x in letter_pairs]
     letter_pair_offsets = [blimp_text.getoffset(font, x) for x in letter_pairs]
 
-    # kerning "width" for a letter is width of pair
-    # minus the width of the individual second letter
+    # The use of letter offsets is required to mimic the PIL layout at kern_add = 0.
+    # For Scala text, the offsets are always 0.
+
     widths = [
         (x[0] + z[0]) - (y[0] + w[0])
         for x, y, z, w in zip(
             letter_pair_sizes, letter_sizes[1:], letter_offsets[:-1], letter_offsets[1:])]
 
     # add width of final letter
-    widths = widths + [letter_sizes[-1][0] + letter_offsets[-1][0]]
+    widths = widths + [letter_sizes[-1][0]]
 
-    # TODO: this is potentially unsafe - not sure about descenders etc
-    # TODO: y offset?
-    # find maximum height
-    height = max([x[1] for x in letter_sizes])
+    ascent, descent = blimp_text.getmetrics(font)
     height_total = (
-        height
+        ascent + descent
         + stroke_width * 2
         + border_xy[1] * 2
     )
 
-    # TODO: add stroke width logic to original text function
-
-    # I think we can get rid of this initial offset
-    # offset_x_first = letter_offsets[0][0]
-    offset_x_first = 0
     width_total = (
         sum(widths)
-        # - offset_x_first
         + (len(widths) - 1) * kern_add
         + stroke_width * 2  # Needs to be * 2 since it is added on all sides
         + border_xy[0] * 2
     )
 
-    if True:
+    if True and DEBUG:
         print(letter_pairs)
         print("ind widths:     ", [x[0] for x in letter_sizes])
         print("ind offsets:    ", [x[0] for x in letter_offsets])
@@ -295,7 +286,7 @@ def text_custom_kerning(
 
     # Loop through and draw letters
 
-    offset_x = 0 - offset_x_first + border_xy[0]
+    offset_x = border_xy[0]
     offset_y = border_xy[1]
     for letter, letter_width in zip(text, widths):
         blimp_text.text(
@@ -319,25 +310,38 @@ def text_custom_kerning(
 
     if stroke_width > 0:
         # composite stroke onto text
+        # TODO: beware double compositing here! Probably want to paste instead!
         im_text = Image.alpha_composite(im_text, im_stroke)
 
-    if False and debug_guides:
+    if debug_lines:
         # unfortunately, this goofs up trimming, lol.
-        print("text offset:", offset_x, offset_y)
+        # but eventually, we don't want to be trimming.
+
+        debug_fill = (128, 128, 128)
+
         ascent, descent = blimp_text.getmetrics(font)
         draw = ImageDraw.Draw(im_text)
         # draw baseline
-        draw.line([(0, ascent), (im_text.size[0] - 1, ascent)], fill=(0, 0, 0))
-        # draw lines at edges of image
-        # draw baseline
-        draw.line([(0, 0), (im_text.size[0] - 1, 0)], fill=(0, 0, 0))
-        draw.line([(0, im_text.size[1] - 1), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=(0, 0, 0))
-        draw.line([(0, 0), (0, im_text.size[1] - 1)], fill=(0, 0, 0))
-        draw.line([(im_text.size[0] - 1, 0), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=(0, 0, 0))
+        draw.line([(0, ascent + offset_y), (im_text.size[0] - 1, ascent + offset_y)], fill=debug_fill)
 
-    # debugging
-    # cv2.imwrite("text.png", solid_text_np)
-    # cv2.imwrite("stroke.png", solid_stroke_np)
+        # draw lines at edges of image
+        draw.line([(0, 0), (im_text.size[0] - 1, 0)], fill=debug_fill)
+        draw.line([(0, im_text.size[1] - 1), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=debug_fill)
+        draw.line([(0, 0), (0, im_text.size[1] - 1)], fill=debug_fill)
+        draw.line([(im_text.size[0] - 1, 0), (im_text.size[0] - 1, im_text.size[1] - 1)], fill=debug_fill)
+
+        # draw lines at borders
+        border_x, border_y = border_xy
+        draw.line([(0, border_y), (im_text.size[0] - 1, border_y)], fill=debug_fill)
+        draw.line([(0, im_text.size[1] - border_y), (im_text.size[0] - 1, im_text.size[1] - border_y)], fill=debug_fill)
+        draw.line([(border_x, 0), (border_x, im_text.size[1] - 1)], fill=debug_fill)
+        draw.line([(im_text.size[0] - border_x, 0), (im_text.size[0] - border_x, im_text.size[1] - 1)], fill=debug_fill)
+
+        # draw vertical lines at letter widths
+        offset_x = border_xy[0]
+        for letter_width in widths:
+            draw.line([(offset_x, 0), (offset_x, height_total)], fill=debug_fill)
+            offset_x = offset_x + letter_width + kern_add
 
     return im_text
 

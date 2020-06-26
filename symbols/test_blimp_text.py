@@ -25,8 +25,6 @@ def test_blimp_text():
     # some of this might belong more in a test for blimp_text,
     # but I think that module will go away eventually.
 
-    # TODO: totally transparent color instead of None
-
     font = blimp.load_font("Cinzel-Regular.ttf", 100)
     missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
@@ -49,8 +47,7 @@ def test_blimp_text():
             assert im_res.mode == "RGBA"
             if DEBUG_VISUALIZE:
                 debugutil.show(im_res, "test_text_standard " + str(use_pil))
-            # TODO: save this in better place
-            im_res.save("text_" + str(use_pil) + ".png")
+            # im_res.save("text_" + str(use_pil) + ".png")
 
 
 def test_text_border():
@@ -58,20 +55,31 @@ def test_text_border():
     how antialiasing pixels may reach beyond the start and end positions,
     and how borders are necessary to capture these pixels."""
 
+    # pylint: disable=too-many-locals
+
     # The goal here is easy comparison by flipping back and forth in PyCharm.
     # TODO: also add programatic verification that font extends into border
 
+    # serifs overflow size
     font = blimp.load_font("Cinzel-Regular.ttf", 200)
+
+    # fixed-width
     # font = blimp.load_font("consola.ttf", 200)
+
+    # gaps between start position and font pixels
+    # font = blimp.load_font("Orbitron-Bold.ttf", 200)
+
     missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
     text = "AVIARY"
-    # text_color = (0, 255, 255, 128)
-    text_color = (0, 255, 255, 255)
+    # text = "axoxo"
+    text_color = (0, 255, 255, 128)
+    # text_color = (0, 255, 255, 255)
     text_stroke_width = 0
     text_stroke_color = missing
     border_size = 32
-    text_kern_add = 32
+    text_kern_add = 0
+    debug_lines = True
 
     def add_guides(img: np.ndarray, size: Tuple):
         """add guides"""
@@ -85,6 +93,7 @@ def test_text_border():
         blimp_text.USE_PIL = use_pil
 
         # ~~~~ standard text ~~~~
+
         print()
         print(f"standard_text use_pil={use_pil}")
         print("----------")
@@ -103,12 +112,14 @@ def test_text_border():
         # get the same image with borders and add guides
 
         im_res_border = blimp.text_standard(
-            text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color)
+            text, (border_size, border_size), font, text_color,
+            text_stroke_width, text_stroke_color)
         im_res_border = np.array(im_res_border)
         add_guides(im_res_border, im_res.size)
         im_res_border = Image.fromarray(im_res_border)
 
         # ~~~~ custom kerning text ~~~~
+
         print()
         print(f"custom_kerning use_pil={use_pil}")
         print("----------")
@@ -116,7 +127,8 @@ def test_text_border():
         # get the text image using text_standard
 
         im_custom = blimp.text_custom_kerning(
-            text, (0, 0), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+            text, (0, 0), font, text_color,
+            text_stroke_width, text_stroke_color, text_kern_add, debug_lines)
 
         # extend the border and add guides
 
@@ -127,22 +139,20 @@ def test_text_border():
         # get the same image with borders and add guides
 
         im_custom_border = blimp.text_custom_kerning(
-            text, (border_size, border_size), font, text_color, text_stroke_width, text_stroke_color, text_kern_add, False)
+            text, (border_size, border_size), font, text_color,
+            text_stroke_width, text_stroke_color, text_kern_add, debug_lines)
         im_custom_border = np.array(im_custom_border)
         add_guides(im_custom_border, im_custom.size)
         im_custom_border = Image.fromarray(im_custom_border)
 
-        # assertions
-        # (we only care about these for certain methods)
+        assert im_res_border.size == im_res_expanded.size
+        assert im_custom_border.size == im_custom_expanded.size
 
-        if not use_pil:
-            assert im_res_border.size == im_res_expanded.size
-            assert im_custom_border.size == im_custom_expanded.size
-            # TODO: assert some things about running over the borders
+        # TODO: assert some things about pixels extending over the borders
 
         # ~~~~ save stuff ~~~~
 
-        method_str = "scala" if use_pil == False else "pil"
+        method_str = "scala" if not use_pil else "pil"
 
         _debug_save_image(im_res, f"{method_str}_standard.png")
         _debug_save_image(im_res_expanded, f"{method_str}_standard_expanded.png")
