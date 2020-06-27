@@ -10,7 +10,7 @@ import sys
 import cv2
 import numpy as np
 
-from symbols import blimp, blimp_util
+from symbols import blimp, blimp_util, blimp_text
 
 # reused stuff
 RESOURCES_DIRNAME = [
@@ -30,6 +30,8 @@ SCRATCH_DIRNAME = os.path.join("test_scratch", "composite")
 
 def test_text():
     """Test various text use cases."""
+
+    blimp_text.USE_PIL = False
 
     if DEBUG:
         os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
