@@ -23,6 +23,11 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
 
     # pylint: disable=too-many-arguments
 
+    # Note: text_scala does not support both fill and stroke at the same time.
+    # If stroke_width > 0, fill is the color of the stroke.
+    # Note that the if doing stroke, the fill argument is not used.
+    # If stroke_width = 0, the stroke_fill argument is not used.
+
     if USE_PIL:
         draw = ImageDraw.Draw(image)
         draw.text(
@@ -33,14 +38,8 @@ def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fil
             stroke_width=stroke_width,
             stroke_fill=stroke_fill)
     else:
-        # Note: text_scala does not support both fill and stroke at the same time.
-        # If stroke_width > 0, fill is the color of the stroke.
-        # Note that the if doing stroke, the fill argument is not used.
-        # If doing fill, the stroke_fill argument is not used.
-
         if stroke_width > 0:
             fill = stroke_fill
-
         text_scala.draw_on_image(
             im_dest=image,
             pos=xy,

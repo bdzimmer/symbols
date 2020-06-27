@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Tuple
+from typing import Dict, Any, Tuple
 
 import cv2
 from PIL import Image, ImageFont, ImageDraw
@@ -20,7 +20,7 @@ from symbols import blimp_text
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
-DEBUG_GUIDES = True
+DEBUG_GUIDES = False
 
 GUIDE_COLOR_EDGE = (0, 255, 0)
 GUIDE_COLOR_BORDER = (255, 0, 0)
@@ -295,23 +295,26 @@ def text_custom_kerning(
             text_str=letter,
             font=font,
             fill=color,
-            stroke_width=stroke_width,
-            stroke_fill=(255, 255, 255))
-        blimp_text.text(
-            image=im_stroke,
-            xy=(offset_x, offset_y),
-            text_str=letter,
-            font=font,
-            fill=(0, 0, 0),
-            stroke_width=stroke_width,
-            stroke_fill=stroke_fill)
+            stroke_width=0,
+            stroke_fill=None)
+        if stroke_width > 0:
+            blimp_text.text(
+                image=im_stroke,
+                xy=(offset_x, offset_y),
+                text_str=letter,
+                font=font,
+                fill=color,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_fill)
 
         offset_x = offset_x + letter_width + kern_add
 
     if stroke_width > 0:
         # composite stroke onto text
-        # TODO: beware double compositing here! Probably want to paste instead!
+        # TODO: beware double compositing here!
+        # Probably want some kind of masked paste instead
         im_text = Image.alpha_composite(im_text, im_stroke)
+        # im_text.paste(im_stroke)
 
     if debug_lines:
         # unfortunately, this goofs up trimming, lol.
@@ -376,10 +379,12 @@ def text_standard(
     return image
 
 
-def render_layer(layer, resources_dirname) -> np.ndarray:
+def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
     """render a single layer"""
 
     layer_type = layer["type"]
+    border_x = layer.get("border_x", 0)
+    border_y = layer.get("border_y", 0)
 
     if layer_type == "image":
         filename = layer["filename"]
@@ -438,18 +443,21 @@ def render_layer(layer, resources_dirname) -> np.ndarray:
 
         print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
 
+        # The original behavior here was (0, 0) for borders
+
         if kern_add > 0 or force_custom_kerning:
             print(f"\trendering '{text}' with custom kerning ({kern_add} px)")
             image = text_custom_kerning(
-                text, (0, 0), font, color, stroke_width, stroke_fill, kern_add,
+                text, (border_x, border_y), font, color, stroke_width, stroke_fill, kern_add,
                 DEBUG_GUIDES)
             if DEBUG:
-                image_standard = text_standard(text, (0, 0), font, color, stroke_width, stroke_fill)
+                image_standard = text_standard(
+                    text, (border_x, border_y), font, color, stroke_width, stroke_fill)
                 image_standard.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
                 image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
         else:
             print(f"\trendering '{text}' with default kerning")
-            image = text_standard(text, (0, 0), font, color, stroke_width, stroke_fill)
+            image = text_standard(text, (border_x, border_y), font, color, stroke_width, stroke_fill)
 
         image = np.array(image)
 
@@ -653,22 +661,32 @@ def apply_effect(image, effect, resources_dirname):
     return image
 
 
-def expand_border_layer(layer_image, layer):
-    """expand image borders with special layer logic"""
+def expand_border_layer(layer_image: np.ndarray, layer: Dict[str, Any]):
+    """expand image borders with special cases for certain layer types"""
 
     border_x = layer.get("border_x", 0)
     border_y = layer.get("border_y", 0)
 
-    if border_x > 0 or border_y > 0:
-        # if we added stroke to a font, shrink the actual amount we
-        # are expanding the border by to compensate for the increased size
-        stroke_width = layer.get("stroke_width", 0)
-        if layer["type"] == "text" and stroke_width > 0:
-            print("\tshifting border expansion to compensate for stroke width")
-            layer_image = expand_border(
-                layer_image, border_x - stroke_width, border_y - stroke_width)
-        else:
-            layer_image = expand_border(layer_image, border_x, border_y)
+    if border_x <= 0 and border_y <= 0:
+        return layer_image, border_x, border_y
+
+    if layer["type"] == "text":
+
+        # Assume text was rendered using the layer's border attributes!
+
+        # This means that we only ACTUALLY expand borders if x was trimmed.
+        # And in that case, screw whatever original position the text was at,
+        # because who cares. We're lining up based on the pixels, not the
+        # original offsets.
+
+        trim_x = layer.get("trim_x", True)
+        if trim_x:
+            layer_image = expand_border(layer_image, border_x, 0)
+
+        # If there was no trimming, leave as is.
+
+    else:
+        layer_image = expand_border(layer_image, border_x, border_y)
 
     return layer_image, border_x, border_y
 
