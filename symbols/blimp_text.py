@@ -18,28 +18,46 @@ USE_PIL = False
 BORDER_DEFAULT = (16, 16)
 
 
-def text(image, xy, text_str, font: FreeTypeFont, fill, stroke_width, stroke_fill):
+def text(
+        image,
+        xy: Tuple[int, int],
+        text_str: str,
+        font: FreeTypeFont,
+        fill: text_scala.Color,
+        stroke_width: int):
     """draw text on an image, mutating it"""
 
     # pylint: disable=too-many-arguments
 
-    # Note: text_scala does not support both fill and stroke at the same time.
-    # If stroke_width > 0, fill is the color of the stroke.
-    # Note that the if doing stroke, the fill argument is not used.
-    # If stroke_width = 0, the stroke_fill argument is not used.
+    # Draw text with either fill or stroke.
+    # (text_scala does not support both at the same time)
+
+    # TODO: make BORDER_DEFAULT a parameter
 
     if USE_PIL:
         draw = ImageDraw.Draw(image)
-        draw.text(
-            xy=xy,
-            text=text_str,
-            font=font,
-            fill=fill,
-            stroke_width=stroke_width,
-            stroke_fill=stroke_fill)
-    else:
         if stroke_width > 0:
-            fill = stroke_fill
+            # Note that PIL doesn't seem to support alpha in stroke...interesting!
+            stroke_width = stroke_width // 2
+            stroke_fill = fill
+            fill = (0, 0, 0, 0)
+            draw.text(
+                xy=(xy[0] - stroke_width, xy[1] - stroke_width),
+                text=text_str,
+                font=font,
+                fill=fill,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_fill)
+        else:
+            stroke_fill = (0, 0, 0, 0)
+            draw.text(
+                xy=xy,
+                text=text_str,
+                font=font,
+                fill=fill,
+                stroke_width=0,
+                stroke_fill=stroke_fill)
+    else:
         text_scala.draw_on_image(
             im_dest=image,
             pos=xy,
@@ -96,7 +114,7 @@ def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
 
 
 def _font_to_tuple(font):
-    """aldfjhaldkjfhlajdh"""
+    """get a tuple of font information (used by text_scala)"""
 
     if isinstance(font, FreeTypeFont):
         font_face, font_style = font.getname()

@@ -28,10 +28,10 @@ def test_blimp_text():
     missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
     args_list = [
-        ("AVIARY", (0, 0), font, missing, 2, (0, 255, 255)),
-        ("AVIARY", (0, 0), font, missing, 2, (0, 255, 255, 128)),
-        ("AVIARY", (0, 0), font, (0, 255, 255), 0, missing),
-        ("AVIARY", (0, 0), font, (0, 255, 255, 128), 0, missing),
+        ("AVIARY", (0, 0), font, (0, 255, 255), 2),
+        ("AVIARY", (0, 0), font,  (0, 255, 255, 128), 2),
+        ("AVIARY", (0, 0), font, (0, 255, 255), 0),
+        ("AVIARY", (0, 0), font, (0, 255, 255, 128), 0),
     ]
 
     for args in args_list:
@@ -99,7 +99,7 @@ def test_text_border():
         # get the text image using text_standard
 
         im_res = blimp.text_standard(
-            text, (0, 0), font, text_color, text_stroke_width, text_stroke_color)
+            text, (0, 0), font, text_color, text_stroke_width)
 
         # extend the border and add guides
 
@@ -111,7 +111,7 @@ def test_text_border():
 
         im_res_border = blimp.text_standard(
             text, (border_size, border_size), font, text_color,
-            text_stroke_width, text_stroke_color)
+            text_stroke_width)
         im_res_border = np.array(im_res_border)
         # add_guides(im_res_border, im_res.size)
         im_res_border = Image.fromarray(im_res_border)
@@ -126,7 +126,7 @@ def test_text_border():
 
         im_custom = blimp.text_custom_kerning(
             text, (0, 0), font, text_color,
-            text_stroke_width, text_stroke_color, text_kern_add, debug_lines)
+            text_stroke_width, text_kern_add, debug_lines)
 
         # extend the border and add guides
 
@@ -138,7 +138,7 @@ def test_text_border():
 
         im_custom_border = blimp.text_custom_kerning(
             text, (border_size, border_size), font, text_color,
-            text_stroke_width, text_stroke_color, text_kern_add, debug_lines)
+            text_stroke_width, text_kern_add, debug_lines)
         im_custom_border = np.array(im_custom_border)
         # add_guides(im_custom_border, im_custom.size)
         im_custom_border = Image.fromarray(im_custom_border)

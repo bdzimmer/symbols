@@ -139,7 +139,7 @@ def test_alignment():
     start_y = 50
 
     for draw_method in ["pil", "scala"]:
-        im_bg = Image.new("RGBA", (2000, 320), (0, 0, 0))
+        im_bg = Image.new("RGBA", (2000, 320), (0, 0, 0, 0))
 
         draw_func = draw_scala if draw_method == "scala" else draw_pil
         pos_x = start_x
@@ -152,7 +152,7 @@ def test_alignment():
             pos_x = pos_x + size_x + 50
 
             # small images
-            img = Image.new("RGBA", (480, 320), (0, 0, 0))
+            img = Image.new("RGBA", (480, 320), (0, 0, 0, 0))
             _ = _draw_text_with_info(
                 img, text_cur, start_x, start_y, draw_func)
             _debug_save_image(img, "align", f"align_{idx}_{draw_method}.png")

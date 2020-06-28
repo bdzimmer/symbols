@@ -19,8 +19,9 @@ RESOURCES_DIRNAME = [
 
 DEBUG = True
 
-# There's currently some issues with this set to false
 FORCE_CUSTOM_KERNING = True
+USE_PIL = False
+TRIM_X = False
 
 CANVAS_WIDTH = 3000
 CANVAS_HEIGHT = 500
@@ -31,7 +32,7 @@ SCRATCH_DIRNAME = os.path.join("test_scratch", "composite")
 def test_text():
     """Test various text use cases."""
 
-    blimp_text.USE_PIL = False
+    blimp_text.USE_PIL = USE_PIL
 
     if DEBUG:
         os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
@@ -49,8 +50,10 @@ def test_text():
     im_bg = blimp.add_alpha(im_bg)
     im_bg = im_bg[0:CANVAS_HEIGHT, 0:CANVAS_WIDTH, :]
 
-    # ~~~~ example 0: plain old text, no stroke
-    # TODO: add printouts for each example
+    # ~~~~
+
+    print()
+    print("~~~~ example 0: plain old text, no stroke")
 
     layer_text = {
         "type": "text",
@@ -61,7 +64,7 @@ def test_text():
         "force_custom_kerning": FORCE_CUSTOM_KERNING,
         "x": 64,
         "y": 64,
-        "trim_x": False
+        "trim_x": TRIM_X
     }
 
     im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
@@ -76,29 +79,50 @@ def test_text():
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_0.png"), im_text)
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_0.png"), im_comp)
 
-    # ~~~~ example 1: text with stroke
+    # ~~~~
 
-    layer_text = {
-        "type": "text",
-        "text": "PROVIDENCE",
-        "font": "Orbitron-Bold.ttf",
-        "size": 350,
-        "color": (0, 0, 0, 255),  # experiment with and without transparency!
-        "force_custom_kerning": FORCE_CUSTOM_KERNING,
-        "stroke_width": 3,
-        "stroke_fill": (255, 0, 0),
-        "x": 64,
-        "y": 64,
-        "trim_x": False
-    }
+    print()
+    print("~~~~ example 1: two layers of stroke")
+    # (for verifying that stroke lines up with text)
 
-    im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+    layers_text = [
+        {
+            "type": "text",
+            "text": "PROVIDENCE",
+            "font": "Orbitron-Bold.ttf",
+            "size": 350,
+            "color": (0, 0, 0),  # experiment with and without transparency!
+            "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            # "stroke_width": 3,
+            "x": 64,
+            "y": 64,
+            "trim_x": TRIM_X
+        },
+        {
+            "type": "text",
+            "text": "PROVIDENCE",
+            "font": "Orbitron-Bold.ttf",
+            "size": 350,
+            "color": (255, 255, 255, 128),  # experiment with and without transparency!
+            "force_custom_kerning": FORCE_CUSTOM_KERNING,
+            "stroke_width": 16,
+            "x": 64,
+            "y": 64,
+            "trim_x": TRIM_X,
+            "border_x": 64
+        }
+    ]
+
+    im_text, im_comp = blimp_util.render_and_composite(layers_text, RESOURCES_DIRNAME, im_bg)
 
     if DEBUG:
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_1.png"), im_text)
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_1.png"), im_comp)
 
-    # ~~~~ example 2: text with double-sided glow
+    # ~~~~
+
+    print()
+    print("~~~~ example 2: text with double-sided glow")
 
     # Also note, due to the way that borders are handled, these layers should line
     # up automatically no matter which size stroke is defined on each.
@@ -114,7 +138,7 @@ def test_text():
             "force_custom_kerning": FORCE_CUSTOM_KERNING,
             "x": 64,
             "y": 64,
-            "trim_x": False,
+            "trim_x": TRIM_X,
             "border_x": 32,
             "border_y": 32
         },
@@ -123,13 +147,12 @@ def test_text():
             "text": "PROVIDENCE",
             "font": "Orbitron-Bold.ttf",
             "size": 350,
-            "color": (0, 0, 0, 0),  # alpha 0
+            "color": (255, 0, 255),  # alpha 255
             "stroke_width": 4,
-            "stroke_fill": (255, 0, 255),  # alpha 255
             "force_custom_kerning": FORCE_CUSTOM_KERNING,
             "x": 64,
             "y": 64,
-            "trim_x": False,
+            "trim_x": TRIM_X,
             "border_x": 32,
             "border_y": 32,
             "effects": [
@@ -165,7 +188,10 @@ def test_text():
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_2.png"), im_text)
         cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_2.png"), im_comp)
 
-    # ~~~~ example 3: masked text with outer glow
+    # ~~~~
+
+    print()
+    print("~~~~ example 3: masked text with outer shadow")
 
     # Note that because the glow is greated from edge detection on the masked
     # image, it's uneven due to the texture. To get an even glow, need another
@@ -181,7 +207,7 @@ def test_text():
         "force_custom_kerning": FORCE_CUSTOM_KERNING,
         "x": 64,
         "y": 64,
-        "trim_x": False,
+        "trim_x": TRIM_X,
         "border_x": 32,
         "border_y": 32,
         "effects": [

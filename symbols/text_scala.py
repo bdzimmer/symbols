@@ -7,7 +7,7 @@ Utilities for drawing text, using an external executable.
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
 import hashlib
-from typing import Tuple, Any, Dict
+from typing import Tuple, Any, Dict, Union
 import os
 
 import cv2
@@ -15,8 +15,9 @@ import numpy as np
 from PIL import Image
 
 Font = Tuple[str, str, int]
-Color = Tuple[int, int, int]
+ColorRGB = Tuple[int, int, int]
 ColorRGBA = Tuple[int, int, int, int]
+Color = Union[ColorRGB, ColorRGBA]
 
 IMAGE_DIRNAME = "text_cache"
 BIN_DIRNAME = [

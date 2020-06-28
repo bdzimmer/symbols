@@ -232,10 +232,10 @@ def assemble_group(
 
 
 def text_custom_kerning(
-        text, border_xy, font, color, stroke_width, stroke_fill, kern_add,
+        text, border_xy, font, color, stroke_width, kern_add,
         debug_lines):
 
-    """text, controlling letter spacing"""
+    """text, controlling letter spacing, and optional stroke"""
 
     letter_sizes = [blimp_text.getsize(font, x) for x in text]
     letter_offsets = [blimp_text.getoffset(font, x) for x in text]
@@ -282,39 +282,32 @@ def text_custom_kerning(
         print("width_total:    ", width_total)
 
     im_text = Image.new("RGBA", (width_total, height_total), 0)
-    im_stroke = Image.new("RGBA", (width_total, height_total), 0)
+
+    # im_stroke = Image.new("RGBA", (width_total, height_total), 0)
 
     # Loop through and draw letters
 
     offset_x = border_xy[0]
     offset_y = border_xy[1]
     for letter, letter_width in zip(text, widths):
-        blimp_text.text(
-            image=im_text,
-            xy=(offset_x, offset_y),
-            text_str=letter,
-            font=font,
-            fill=color,
-            stroke_width=0,
-            stroke_fill=None)
         if stroke_width > 0:
             blimp_text.text(
-                image=im_stroke,
+                image=im_text,
                 xy=(offset_x, offset_y),
                 text_str=letter,
                 font=font,
                 fill=color,
-                stroke_width=stroke_width,
-                stroke_fill=stroke_fill)
+                stroke_width=stroke_width)
+        else:
+            blimp_text.text(
+                image=im_text,
+                xy=(offset_x, offset_y),
+                text_str=letter,
+                font=font,
+                fill=color,
+                stroke_width=0)
 
         offset_x = offset_x + letter_width + kern_add
-
-    if stroke_width > 0:
-        # composite stroke onto text
-        # TODO: beware double compositing here!
-        # Probably want some kind of masked paste instead
-        im_text = Image.alpha_composite(im_text, im_stroke)
-        # im_text.paste(im_stroke)
 
     if debug_lines:
         # unfortunately, this goofs up trimming, lol.
@@ -354,12 +347,15 @@ def text_standard(
         border_xy: Tuple,
         font: Any,
         color: Tuple,
-        stroke_width: int,
-        stroke_fill: Tuple) -> Image.Image:
+        stroke_width: int) -> Image.Image:
     """standard text rendering"""
 
     # border_xy is start position / border size of image
     border_x, border_y = border_xy
+
+    # Since size here is calculated without regard to stroke width,
+    # I think this should work fine for stroke, at least when using
+    # text_scala.
 
     size = blimp_text.getsize(font, text)
     image = Image.new(
@@ -373,8 +369,7 @@ def text_standard(
         text_str=text,
         font=font,
         fill=color,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill)
+        stroke_width=stroke_width)
 
     return image
 
@@ -430,7 +425,7 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         color = tuple(layer.get("color", (0, 0, 0, 255)))
         kern_add = layer.get("kern_add", 0)
         stroke_width = layer.get("stroke_width", 0)
-        stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
+        # stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
         force_custom_kerning = layer.get("force_custom_kerning", False)
         trim_x = layer.get("trim_x", True)
 
@@ -448,25 +443,55 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         if kern_add > 0 or force_custom_kerning:
             print(f"\trendering '{text}' with custom kerning ({kern_add} px)")
             image = text_custom_kerning(
-                text, (border_x, border_y), font, color, stroke_width, stroke_fill, kern_add,
+                text, (border_x, border_y), font, color, stroke_width, kern_add,
                 DEBUG_GUIDES)
             if DEBUG:
                 image_standard = text_standard(
-                    text, (border_x, border_y), font, color, stroke_width, stroke_fill)
+                    text, (border_x, border_y), font, color, stroke_width)
                 image_standard.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_true.png"))
                 image.save(os.path.join(DEBUG_DIRNAME, "text_" + text + "_custom.png"))
         else:
             print(f"\trendering '{text}' with default kerning")
-            image = text_standard(text, (border_x, border_y), font, color, stroke_width, stroke_fill)
+            image = text_standard(text, (border_x, border_y), font, color, stroke_width)
 
         image = np.array(image)
 
-        # TODO: don't forget about this trim behavior!!!!
         if trim_x:
             print("\ttrimming text layer")
-            start_x, end_x = find_trim_x_indices(image)
-            print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
-            image = image[:, start_x:end_x, :]
+
+            # if we used stroke, we do the trim calculation based on the non-stroke image
+            if stroke_width > 0:
+                print("\tcalculating trim locations based on non-stroke image")
+
+                if kern_add > 0 or force_custom_kerning:
+                    print(f"\trendering '{text}' with custom kerning ({kern_add} px for trim calculation)")
+                    image_trim_calc = text_custom_kerning(
+                        text, (border_x, border_y), font, color, 0, kern_add,
+                        DEBUG_GUIDES)
+                else:
+                    print(f"\trendering '{text}' with default kerning for trim calculations")
+                    image_trim_calc = text_standard(text, (border_x, border_y), font, color, 0)
+
+                image_trim_calc = np.array(image_trim_calc)
+                start_x, end_x = find_trim_x_indices(image_trim_calc)
+                print("border_x", border_x)
+                start_x = start_x - border_x
+                end_x = end_x + border_x
+                # TODO: this will make things line up but cut off the stroke
+                # need to adjust trim and expansion for border
+                print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
+                image = image[:, start_x:end_x, :]
+                # restore borders after trimming
+                # image = expand_border(image, border_x, 0)
+
+            else:
+                print("\tcalculating trim locations based on current image")
+                start_x, end_x = find_trim_x_indices(image)
+
+                print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
+                image = image[:, start_x:end_x, :]
+                # restore borders after trimming
+                image = expand_border(image, border_x, 0)
 
         print(f"\tfinal dimensions: ({image.shape[1]}, {image.shape[0]})")
 
@@ -670,22 +695,7 @@ def expand_border_layer(layer_image: np.ndarray, layer: Dict[str, Any]):
     if border_x <= 0 and border_y <= 0:
         return layer_image, border_x, border_y
 
-    if layer["type"] == "text":
-
-        # Assume text was rendered using the layer's border attributes!
-
-        # This means that we only ACTUALLY expand borders if x was trimmed.
-        # And in that case, screw whatever original position the text was at,
-        # because who cares. We're lining up based on the pixels, not the
-        # original offsets.
-
-        trim_x = layer.get("trim_x", True)
-        if trim_x:
-            layer_image = expand_border(layer_image, border_x, 0)
-
-        # If there was no trimming, leave as is.
-
-    else:
+    if not layer["type"] == "text":  # text layers handle their own border expansion
         layer_image = expand_border(layer_image, border_x, border_y)
 
     return layer_image, border_x, border_y
