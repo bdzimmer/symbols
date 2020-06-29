@@ -6,15 +6,15 @@ Stuff for refactoring text in blimp.
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
-from typing import Tuple
+from typing import Any, Tuple
 
 from PIL import ImageDraw
 from PIL.ImageFont import FreeTypeFont
 
 from symbols import text_scala
 
-USE_PIL = False
 
+USE_PIL = False
 BORDER_DEFAULT = (16, 16)
 
 
@@ -24,8 +24,9 @@ def text(
         text_str: str,
         font: FreeTypeFont,
         fill: text_scala.Color,
-        stroke_width: int):
-    """draw text on an image, mutating it"""
+        stroke_width: int) -> None:
+
+    """Draw text on an image, mutating it."""
 
     # pylint: disable=too-many-arguments
 
@@ -35,6 +36,8 @@ def text(
     # TODO: make BORDER_DEFAULT a parameter
 
     if USE_PIL:
+        # TODO: this may have to be revised now, lol
+        # I wonder if this is handling transparency now, lol
         draw = ImageDraw.Draw(image)
         if stroke_width > 0:
             # Note that PIL doesn't seem to support alpha in stroke...interesting!
@@ -113,7 +116,7 @@ def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
     return metrics
 
 
-def _font_to_tuple(font):
+def _font_to_tuple(font: Any) -> Tuple:
     """get a tuple of font information (used by text_scala)"""
 
     if isinstance(font, FreeTypeFont):

@@ -14,6 +14,9 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from symbols import conversions
+
+
 Font = Tuple[str, str, int]
 ColorRGB = Tuple[int, int, int]
 ColorRGBA = Tuple[int, int, int, int]
@@ -50,7 +53,7 @@ def draw(
         command = draw_command(config_filename)
         os.system(command)
 
-    im = cv2.imread(image_filename, cv2.IMREAD_UNCHANGED)
+    img = cv2.imread(image_filename, cv2.IMREAD_UNCHANGED)
 
     info_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + "_info.txt")
     with open(info_filename, "r") as info_file:
@@ -64,7 +67,7 @@ def draw(
             else:
                 info[key] = int(val)
 
-    return im, info
+    return img, info
 
 
 def draw_on_image(
@@ -78,6 +81,8 @@ def draw_on_image(
         ) -> Dict[str, int]:
 
     """draw text onto a PIL Image, mutating it"""
+
+    # pylint: disable=too-many-arguments
 
     # Assumes the destination is transparent, since text will be drawn onto it
     # via a simple masked paste.
@@ -94,7 +99,7 @@ def draw_on_image(
     pos_adj = (pos[0] - border_size[0], pos[1] - border_size[1])
 
     # colorize
-    im_text = colorize(im_text_alpha, fill)
+    im_text = conversions.colorize(im_text_alpha, fill)
 
     # I think the only place where this will screw up is sequentially
     # drawn overlapping letters.
@@ -104,31 +109,6 @@ def draw_on_image(
     im_dest.paste(im_text_pil, pos_adj, mask=im_mask_pil)
 
     return info
-
-
-def colorize(alpha: np.ndarray, color: Tuple) -> np.ndarray:
-    """colorize an alpha image"""
-    # https://nedbatchelder.com/blog/200801/truly_transparent_text_with_pil.html
-
-    res = np.zeros((alpha.shape[0], alpha.shape[1], 4), dtype=np.ubyte)
-    if len(color) == 3:
-        color = (color[0], color[1], color[2], 255)
-    res[:, :, 0:4] = color
-
-    # print("colorize res alpha max #1:", np.max(res[:, :, 3]))
-
-    # res[:, :, 3] = res[:, :, 3] * np.array(alpha / 255.0)
-    res[:, :, 3] = color[3] / 255.0 * alpha
-
-    # print("colorize res alpha max #2:", np.max(res[:, :, 3]))
-
-    # set all completely transparent pixels to (something, 0)
-    res[res[:, :, 3] == 0, 0:3] = (0, 0, 0)
-
-    # print("colorize res image max:", np.max(res[:, :, 0:3]))
-    # print("colorize res alpha max:", np.max(res[:, :, 3]))
-
-    return res
 
 
 def compute_hash(val: Any) -> str:

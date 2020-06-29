@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
-from symbols import blimp, text, text_scala, util
+from symbols import blimp, text, text_scala, util, blimp_text
 
 DEBUG = True
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
@@ -33,16 +33,16 @@ def test_wrap():
 
     width_max = 480
     lines = text.wrap_text(message, font, width_max)
-    height = text.font_line_height(font) * len(lines)
+    line_height = sum(blimp_text.getmetrics(font))
+    height = line_height * len(lines)
 
     im_bg = Image.new("RGBA", (width_max, height), (0, 0, 0, 255))
 
     def im_func(img):
         """helper"""
-        img = text.l_to_rgba(img, (0, 0, 255))
-        im_fg = Image.new("RGBA", im_bg.size, (0, 0, 0, 0))
-        im_fg.paste(Image.fromarray(img))
-        img = Image.alpha_composite(im_bg, im_fg)
+        im_fg = Image.fromarray(img)
+        img = im_bg.copy()
+        img.alpha_composite(im_fg, dest=(0, 0))
         img = np.array(img)
         return img
 
@@ -53,7 +53,8 @@ def test_wrap():
     else:
         frame_func = lambda x: None
 
-    text.animate_characters(lines[0:2], font, width_max, im_func, frame_func, 1, 3)
+    text.animate_characters(
+        lines[0:2], font, (0, 0, 255), width_max, im_func, frame_func, 1, 3)
 
     if DEBUG:
         movie_filename = os.path.join(SCRATCH_DIRNAME, "wrap.mp4")
@@ -92,9 +93,8 @@ def test_alignment():
             font=font,
             fill=(255, 255, 255))
         size_x, size_y = font.getsize(text_cur)
-        # offset_x, offset_y = text.offset(text_cur, font)
-        line_height = text.font_line_height(font)
         ascent, descent = font.getmetrics()
+        line_height = ascent + descent
         return size_x, size_y, ascent, descent, line_height
 
     def draw_scala(img, text_cur, pos_x, pos_y):
