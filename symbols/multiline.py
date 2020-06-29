@@ -1,6 +1,6 @@
 """
 
-Utilities for drawing and animating text.
+Utilities for drawing and animating multiline text.
 
 """
 
@@ -28,7 +28,7 @@ def wrap_text(
 
     for idx in range(1, len(words)):
         line = " ".join(words[start_idx:(idx + 1)])
-        width, _ = blimp_text.getsize(font, line) # font.getsize(line)
+        width, _ = blimp_text.getsize(font, line)  # font.getsize(line)
 
         if width > width_max:
             line_new = " ".join(words[start_idx:idx])
@@ -46,9 +46,9 @@ def multiline(
         font: ImageFont.FreeTypeFont,
         color: Tuple,
         line_height: int,
-        image_width: int,
-        image_height: int) -> np.ndarray:
-    """draw multiline text using PIL ImageDraw"""
+        box_xy: Tuple[int, int],
+        border_xy: Tuple[int, int]) -> np.ndarray:
+    """draw multiline text using blimp_text"""
 
     # pylint: disable=too-many-arguments
 
@@ -57,12 +57,17 @@ def multiline(
     # draw = ImageDraw.Draw(image)
     #     draw.text((pos_x, pos_y), line, font=font, fill="white")
 
+    box_x, box_y = box_xy
+    border_x, border_y = border_xy
+    image_width = box_x + border_x * 2
+    image_height = box_y + border_y * 2
+
     image = Image.new("RGBA", (image_width, image_height), (0, 0, 0, 0))
 
     for idx, line, in enumerate(lines):
         print(line)
-        pos_x = 0
-        pos_y = idx * line_height
+        pos_x = border_x
+        pos_y = border_y + idx * line_height
 
         # TODO: refactor to handle images with borders
         blimp_text.text(image, (pos_x, pos_y), line, font, color, 0)
@@ -75,6 +80,7 @@ def animate_characters(
         font: Any,
         color: Tuple,
         width_max: int,
+        border_xy: Tuple[int, int],
         im_func: Callable,     # function to update the image before writing to disk
         frame_func: Callable,  # function to write frame to disk
         dup: int,              # frames per character
@@ -116,7 +122,7 @@ def animate_characters(
 
         # TODO: test a case where one word is too long
         img = multiline(
-            lines_mod, font, color, line_height, width_max, image_height)
+            lines_mod, font, color, line_height, (width_max, image_height), border_xy)
 
         for _ in range(dup):
             im_mod = im_func(img)

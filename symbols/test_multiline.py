@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
-from symbols import blimp, text, text_scala, util, blimp_text
+from symbols import blimp, multiline, text_scala, util, blimp_text
 
 DEBUG = True
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
@@ -32,11 +32,15 @@ def test_wrap():
         "prepared--individually--to act decisively as he did.")
 
     width_max = 480
-    lines = text.wrap_text(message, font, width_max)
+    border_xy = (16, 16)
+    lines = multiline.wrap_text(message, font, width_max)
     line_height = sum(blimp_text.getmetrics(font))
     height = line_height * len(lines)
 
-    im_bg = Image.new("RGBA", (width_max, height), (0, 0, 0, 255))
+    im_bg = Image.new(
+        "RGBA",
+        (width_max + border_xy[0] * 2, height + border_xy[1] * 2),
+        (0, 0, 0, 255))
 
     def im_func(img):
         """helper"""
@@ -53,8 +57,8 @@ def test_wrap():
     else:
         frame_func = lambda x: None
 
-    text.animate_characters(
-        lines[0:2], font, (0, 0, 255), width_max, im_func, frame_func, 1, 3)
+    multiline.animate_characters(
+        lines[0:2], font, (0, 0, 255), width_max, border_xy, im_func, frame_func, 1, 3)
 
     if DEBUG:
         movie_filename = os.path.join(SCRATCH_DIRNAME, "wrap.mp4")
