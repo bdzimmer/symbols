@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-pylint --extension-pkg-whitelist=cv2 symbols
+pylint --extension-pkg-whitelist=cairo,cv2 symbols

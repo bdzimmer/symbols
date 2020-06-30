@@ -6,31 +6,38 @@
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
-from typing import List, Callable
+from typing import List, Callable, Optional
 
 import numpy as np
 
-from symbols import symbols, draw
+from symbols import symbols
 
 
 def draw_frame(
         canvas: np.ndarray,
         animation_flat: List[symbols.TimedAnim],
         time: float,
-        effect_func: Callable,
+        effect_func: Optional[Callable],
+        render_func: Optional[Callable],
         ) -> None:
 
     """draw a frame of an animation"""
 
     # filter TimedAnims by time
+    # could do this outside, but I think it makes sense to do it here
+    # for convenience
     anims = [x for x in animation_flat if time >= x.time]
 
     to_render = []
 
-    for x in anims:
-        print("\tprocess:", x.anim.label, "-", x.anim.primitive.__class__.__name__)
+    for timed_anim in anims:
 
-        anim: symbols.Animation = x.anim
+        print(
+            "\tprocess:",
+            timed_anim.anim.label, "-",
+            timed_anim.anim.primitive.__class__.__name__)
+
+        anim: symbols.Animation = timed_anim.anim
         prim: symbols.Primitive = anim.primitive
 
         # do the base animation, creating a derived primitive
@@ -38,15 +45,14 @@ def draw_frame(
         if isinstance(anim, symbols.AnimDuration):
             if isinstance(prim, symbols.Line):
                 # assuming AnimDuration for now
-                frac = np.clip(float(time - x.time) / x.anim.head_duration, 0.0, 1.0)
+                frac = np.clip(
+                    float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
                 prim_animated = symbols.line_frac(prim, frac)
             elif isinstance(prim, symbols.Circle):
                 # assuming AnimDuration for now
-                frac = np.clip(float(time - x.time) / x.anim.head_duration, 0.0, 1.0)
+                frac = np.clip(
+                    float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
                 prim_animated = symbols.circle_frac(prim, frac)
-                # print(
-                #     prim_animated.start_angle * 360.0 / symbols.TAU,
-                #     prim_animated.end_angle * 360.0 / symbols.TAU)
             else:
                 print("No implementation for primitive type", anim.__class__)
                 prim_animated = None
@@ -56,17 +62,11 @@ def draw_frame(
 
         if prim_animated is not None:
             to_render.append(prim_animated)
-            prims_addl = effect_func(prim, prim_animated, anim.label, time)
-            to_render.extend(prims_addl)
-
-    # TODO: sorting???
+            if effect_func is not None:
+                prims_addl = effect_func(prim, prim_animated, anim.label, time)
+                to_render.extend(prims_addl)
 
     to_render = sorted(to_render, key=lambda x: x.depth)
 
-    for prim in to_render:
-        print("\tdraw:", x.anim.primitive.__class__.__name__)
-
-        if isinstance(prim, symbols.Line):
-            draw.draw_line_cv(canvas, prim)
-        elif isinstance(prim, symbols.Circle):
-            draw.draw_circle_cv(canvas, prim)
+    if render_func is not None:
+        render_func(canvas, to_render)
