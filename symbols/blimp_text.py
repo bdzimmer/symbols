@@ -22,7 +22,7 @@ def text(
         image,
         xy: Tuple[int, int],
         text_str: str,
-        font: FreeTypeFont,
+        font: Any,
         fill: text_scala.Color,
         stroke_width: int) -> None:
 
@@ -106,7 +106,7 @@ def getoffset(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
     return offset
 
 
-def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
+def getmetrics(font: Any) -> Tuple[int, int]:
     """get ascent and descent"""
     if USE_PIL:
         metrics = font.getmetrics()
@@ -115,6 +115,15 @@ def getmetrics(font: FreeTypeFont) -> Tuple[int, int]:
         metrics = (info["ascent"], info["descent"])
     return metrics
 
+
+def getleading(font: Any) -> int:
+    """get leading"""
+    if USE_PIL:
+        leading = 0
+    else:
+        _, info = text_scala.draw("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
+        leading = info["leading"]
+    return leading
 
 def _font_to_tuple(font: Any) -> Tuple:
     """get a tuple of font information (used by text_scala)"""

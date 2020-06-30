@@ -17,7 +17,7 @@ from symbols import blimp_text
 
 def wrap_text(
         text: str,
-        font: ImageFont.FreeTypeFont,
+        font: Any,
         width_max: int) -> List[str]:
     """split text into lines / words given a width in pixels"""
 

@@ -16,7 +16,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
-from symbols import blimp_text
+from symbols import blimp_text, multiline
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
@@ -425,18 +425,16 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         color = tuple(layer.get("color", (0, 0, 0, 255)))
         kern_add = layer.get("kern_add", 0)
         stroke_width = layer.get("stroke_width", 0)
-        # stroke_fill = layer.get("stroke_fill", (0, 0, 0, 255))
         force_custom_kerning = layer.get("force_custom_kerning", False)
         trim_x = layer.get("trim_x", True)
 
         if isinstance(font_filename, str):
             font = load_font(font_filename, font_size)
-            font_tuple = blimp_text._font_to_tuple(font)
+            # font_tuple = blimp_text._font_to_tuple(font)
         else:
             font = load_font(font_filename[0], font_size), font_filename[1]
-            font_tuple = blimp_text._font_to_tuple(font[0])
-
-        print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
+            # font_tuple = blimp_text._font_to_tuple(font[0])
+        # print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
 
         # The original behavior here was (0, 0) for borders
 
@@ -494,6 +492,38 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
                 image = expand_border(image, border_x, 0)
 
         print(f"\tfinal dimensions: ({image.shape[1]}, {image.shape[0]})")
+
+    elif layer_type == "multilinetext":
+        font_filename = layer["font"]
+        font_size = layer["size"]
+        text = layer["text"]
+        color = tuple(layer.get("color", (0, 0, 0, 255)))
+        height = layer.get("height")
+        width = layer.get("width")
+        leading = layer.get("leading", -1)
+
+        if isinstance(font_filename, str):
+            font = load_font(font_filename, font_size)
+        else:
+            font = load_font(font_filename[0], font_size), font_filename[1]
+        ascent, descent = blimp_text.getmetrics(font)
+        line_height = ascent + descent
+
+        if leading == -1:
+            leading = blimp_text.getleading(font)
+
+        if leading > 0:
+            line_height = line_height + leading
+
+        if isinstance(text, list):
+            lines = [y for x in text for y in multiline.wrap_text(x, font, width)]
+        else:
+            lines = multiline.wrap_text(text, font, width)
+
+        image = multiline.multiline(
+            lines, font, color, line_height,
+            (width, height),
+            (border_x, border_y))
 
     elif layer_type == "concat":
         axis = layer["axis"]
@@ -695,7 +725,8 @@ def expand_border_layer(layer_image: np.ndarray, layer: Dict[str, Any]):
     if border_x <= 0 and border_y <= 0:
         return layer_image, border_x, border_y
 
-    if not layer["type"] == "text":  # text layers handle their own border expansion
+    if layer["type"] != "text" and layer["type"] != "multilinetext":
+        # text layers handle their own border expansion
         layer_image = expand_border(layer_image, border_x, border_y)
 
     return layer_image, border_x, border_y
