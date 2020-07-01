@@ -45,6 +45,19 @@ class Circle(Primitive):
 
 
 @attr.s(frozen=True)
+class Polyline(Primitive):
+    """a sequence of line segments"""
+    lines = attr.ib()
+    joint_type = attr.ib()
+    closed = attr.ib()
+    # TODO: cap type?
+
+    thickness = attr.ib()
+    depth = attr.ib()
+    color = attr.ib()
+
+
+@attr.s(frozen=True)
 class Dot(Primitive):
     """a filled dot"""
     center = attr.ib()
@@ -132,6 +145,51 @@ def circle_frac(circle: Circle, frac: float) -> Circle:
     """transform a circle into a fraction of a circle"""
     new_end = circle.start_angle + frac * (circle.end_angle - circle.start_angle)
     return attr.evolve(circle, end_angle=new_end)
+
+
+def polyline_frac(polyline: Polyline, frac: float) -> Polyline:
+    """transform a polyline into a fraction of a polyline"""
+
+    # edge cases so we don't have to deal with out of bounds
+    # on the np.where below
+
+    if frac == 1.0:
+        return polyline
+
+    if frac == 0.0:
+        return attr.evolve(polyline, lines=[], closed=False)
+
+    # find the length of each line
+    # TODO: do this on polyline creation, since it's invariant
+    lengths = [length(x) for x in polyline.lines]
+    lengths_total = sum(lengths)
+    lengths_weighted = [x / lengths_total for x in lengths]
+    lengths_weighted_cumsum = np.cumsum([0.0] + lengths_weighted)
+
+    # find the last index where frac is greater than weighted length
+    idx_final = np.where(lengths_weighted_cumsum < frac)[0][-1]
+
+    # fraction of final line
+    # TODO: test this on some shapes where the lengths aren't equal
+    frac_final = (frac - lengths_weighted_cumsum[idx_final]) / lengths_weighted[idx_final]
+
+    # derive final line
+    line_final = line_frac(polyline.lines[idx_final], frac_final)
+
+    # build new line list
+    lines = polyline.lines[:idx_final] + [line_final]
+
+    # TODO: additional logic for little bits of lines for proper caps!
+
+    print(lengths_weighted_cumsum)
+    print(frac, idx_final, len(lines))
+    print("----")
+
+    # derive new polyline
+    return attr.evolve(
+        polyline,
+        lines=lines,
+        closed=frac >= 1.0)
 
 
 def interp(start, end, frac):

@@ -30,9 +30,34 @@ def draw_circle(context: cairo.Context, circle: symbols.Circle) -> None:
     context.set_line_width(circle.thickness)
     _set_color(context, circle.color)
 
-    context.arc(
+    context.arc_negative(
         circle.center[0], circle.center[1], circle.radius,
         circle.start_angle, circle.end_angle)
+    context.stroke()
+
+
+def draw_polyline(context: cairo.Context, polyline: symbols.Polyline) -> None:
+    """draw a polyline"""
+
+    if not polyline.lines:
+        return
+
+    # The gotchas for animation and joints should be handled by polyline_frac, not this.
+
+    context.set_line_width(polyline.thickness)
+    _set_color(context, polyline.color)
+    # context.set_line_join()   # TODO: implement
+
+    context.move_to(polyline.lines[0].start[0], polyline.lines[0].start[1])
+
+    if polyline.closed:
+        for line in polyline.lines[:-1]:
+            context.line_to(line.end[0], line.end[1])
+        context.close_path()
+    else:
+        for line in polyline.lines:
+            context.line_to(line.end[0], line.end[1])
+
     context.stroke()
 
 
@@ -53,6 +78,8 @@ def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
             draw_line(context, prim)
         elif isinstance(prim, symbols.Circle):
             draw_circle(context, prim)
+        elif isinstance(prim, symbols.Polyline):
+            draw_polyline(context, prim)
 
     # get array
     surface_array = np.ndarray((height, width, 4), dtype=np.uint8, buffer=surface.get_data())

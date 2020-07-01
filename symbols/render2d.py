@@ -43,16 +43,18 @@ def draw_frame(
         # do the base animation, creating a derived primitive
 
         if isinstance(anim, symbols.AnimDuration):
+            frac = np.clip(
+                float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
+
+            # TODO: consider dealing with the <=0.0 and >=1.0 cases here
+
+            # TODO: consider moving the frac dispatch into the symbols module
             if isinstance(prim, symbols.Line):
-                # assuming AnimDuration for now
-                frac = np.clip(
-                    float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
                 prim_animated = symbols.line_frac(prim, frac)
             elif isinstance(prim, symbols.Circle):
-                # assuming AnimDuration for now
-                frac = np.clip(
-                    float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
                 prim_animated = symbols.circle_frac(prim, frac)
+            elif isinstance(prim, symbols.Polyline):
+                prim_animated = symbols.polyline_frac(prim, frac)
             else:
                 print("No implementation for primitive type", anim.__class__)
                 prim_animated = None

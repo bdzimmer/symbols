@@ -43,6 +43,9 @@ def draw_circle(img, circle) -> None:
         circle.thickness)
 
 
+# TODO: polyline drawing
+
+
 def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
     """Render a sorted list of primitives using OpenCV"""
 
