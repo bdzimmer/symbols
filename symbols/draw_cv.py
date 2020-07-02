@@ -21,7 +21,7 @@ def draw_line(img, line) -> None:
         img,
         to_int(line.start),
         to_int(line.end),
-        (line.color[2], line.color[1], line.color[0]),
+        line.color,
         line.thickness,
         cv2.LINE_AA)
 
@@ -39,7 +39,7 @@ def draw_circle(img, circle) -> None:
         0.0,
         # end_angle,
         (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU,
-        (circle.color[2], circle.color[1], circle.color[0]),
+        circle.color,
         circle.thickness)
 
 
@@ -48,11 +48,14 @@ def draw_circle(img, circle) -> None:
 
 def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
     """Render a sorted list of primitives using OpenCV"""
-
     for prim in primitives:
         print("\trender_cv:", prim.__class__.__name__)
+        draw(canvas, prim)
 
-        if isinstance(prim, symbols.Line):
-            draw_line(canvas, prim)
-        elif isinstance(prim, symbols.Circle):
-            draw_circle(canvas, prim)
+
+def draw(canvas: np.ndarray, prim: symbols.Primitive) -> None:
+    """dispatch"""
+    if isinstance(prim, symbols.Line):
+        draw_line(canvas, prim)
+    elif isinstance(prim, symbols.Circle):
+        draw_circle(canvas, prim)

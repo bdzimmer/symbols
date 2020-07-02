@@ -30,6 +30,8 @@ def draw_circle(context: cairo.Context, circle: symbols.Circle) -> None:
     context.set_line_width(circle.thickness)
     _set_color(context, circle.color)
 
+    # TODO: it's still a bit unclear whether I should use arc or arc_negative
+    # to match opencv behavior
     context.arc_negative(
         circle.center[0], circle.center[1], circle.radius,
         circle.start_angle, circle.end_angle)
@@ -42,11 +44,11 @@ def draw_polyline(context: cairo.Context, polyline: symbols.Polyline) -> None:
     if not polyline.lines:
         return
 
-    # The gotchas for animation and joints should be handled by polyline_frac, not this.
+    # The gotchas for animation and joints will be handled by polyline_frac, not this.
 
     context.set_line_width(polyline.thickness)
     _set_color(context, polyline.color)
-    # context.set_line_join()   # TODO: implement
+    # context.set_line_join()   # TODO: implement joint type
 
     context.move_to(polyline.lines[0].start[0], polyline.lines[0].start[1])
 
@@ -64,36 +66,61 @@ def draw_polyline(context: cairo.Context, polyline: symbols.Polyline) -> None:
 def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
     """Render using pycairo"""
 
-    # create transparent Cairo canvas
     height, width, _ = canvas.shape
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-
-    # create context from surface
-    context = cairo.Context(surface)
+    surface, context = create_surface(width, height)
 
     for prim in primitives:
         print("\trender_cv:", prim.__class__.__name__)
+        draw(context, prim)
 
-        if isinstance(prim, symbols.Line):
-            draw_line(context, prim)
-        elif isinstance(prim, symbols.Circle):
-            draw_circle(context, prim)
-        elif isinstance(prim, symbols.Polyline):
-            draw_polyline(context, prim)
-
-    # get array
-    surface_array = np.ndarray((height, width, 4), dtype=np.uint8, buffer=surface.get_data())
-    # canvas[:, :, :] = surface_array
-    # return
+    surface_image = surface_to_image(surface)
 
     # composite with canvas
     composite_pil = Image.alpha_composite(
         Image.fromarray(canvas),
-        Image.fromarray(surface_array)
+        Image.fromarray(surface_image)
     )
 
     # insert into canvas, mutating canvas
     canvas[:, :, :] = np.array(composite_pil)
+
+
+def draw(context: cairo.Context, prim: symbols.Primitive) -> None:
+    """dispatch"""
+    if isinstance(prim, symbols.Line):
+        draw_line(context, prim)
+    elif isinstance(prim, symbols.Circle):
+        draw_circle(context, prim)
+    elif isinstance(prim, symbols.Polyline):
+        draw_polyline(context, prim)
+
+
+def create_surface(width: int, height: int) -> Tuple[cairo.ImageSurface, cairo.Context]:
+    """create surface"""
+
+    # create transparent Cairo canvas
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+    context = cairo.Context(surface)
+    return surface, context
+
+
+def surface_to_image(surface: cairo.ImageSurface) -> Image.Image:
+    """convert surface to RGBA image"""
+
+    # convert from premultiplied alpha to not premultiplied alpha
+    return Image.fromarray(_surface_to_array(surface), mode="RGBa").convert("RGBA")
+
+
+def _surface_to_array(surface: cairo.ImageSurface) -> np.ndarray:
+    """convert surface to array"""
+
+    # NOTE! The format of the array is PREMULTIPLIED ALPHA, not RGBA!
+    res = np.ndarray(
+        (surface.get_height(), surface.get_width(), 4),  # do height and width work here???
+        dtype=np.uint8,
+        buffer=surface.get_data())
+    res = res[:, :, [2, 1, 0, 3]]  # swap RGB order like OpenCV
+    return res
 
 
 def _set_color(context: cairo.Context, color: Tuple) -> None:
