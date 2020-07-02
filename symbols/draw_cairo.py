@@ -78,7 +78,7 @@ def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
     # composite with canvas
     composite_pil = Image.alpha_composite(
         Image.fromarray(canvas),
-        Image.fromarray(surface_image)
+        surface_image
     )
 
     # insert into canvas, mutating canvas

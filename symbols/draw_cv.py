@@ -40,7 +40,8 @@ def draw_circle(img, circle) -> None:
         # end_angle,
         (circle.end_angle - circle.start_angle) * 360.0 / symbols.TAU,
         circle.color,
-        circle.thickness)
+        circle.thickness,
+        cv2.LINE_AA)
 
 
 # TODO: polyline drawing
