@@ -11,7 +11,7 @@ import os
 from PIL import Image
 import numpy as np
 
-from symbols import blimp, blimp_text, debugutil
+from symbols import blimp, blimp_text, debugutil, trim
 
 
 DEBUG = True
@@ -29,7 +29,7 @@ def test_blimp_text():
 
     args_list = [
         ("AVIARY", (0, 0), font, (0, 255, 255), 2),
-        ("AVIARY", (0, 0), font,  (0, 255, 255, 128), 2),
+        ("AVIARY", (0, 0), font, (0, 255, 255, 128), 2),
         ("AVIARY", (0, 0), font, (0, 255, 255), 0),
         ("AVIARY", (0, 0), font, (0, 255, 255, 128), 0),
     ]
@@ -103,7 +103,7 @@ def test_text_border():
 
         # extend the border and add guides
 
-        im_res_expanded = blimp.expand_border(np.array(im_res), border_size, border_size)
+        im_res_expanded = trim.expand_border(np.array(im_res), border_size, border_size)
         # add_guides(im_res_expanded, im_res.size)
         im_res_expanded = Image.fromarray(im_res_expanded)
 
@@ -130,7 +130,7 @@ def test_text_border():
 
         # extend the border and add guides
 
-        im_custom_expanded = blimp.expand_border(np.array(im_custom), border_size, border_size)
+        im_custom_expanded = trim.expand_border(np.array(im_custom), border_size, border_size)
         # add_guides(im_custom_expanded, im_custom.size)
         im_custom_expanded = Image.fromarray(im_custom_expanded)
 
@@ -149,13 +149,13 @@ def test_text_border():
         # verify that nothing lies beyond the border for the expanded version
         # (we could test this with custom kerning as well if we disabled debug lines)
 
-        start_x, end_x = blimp.find_trim_x_indices(np.array(im_res_expanded))
+        start_x, end_x = trim.find_trim_x_indices(np.array(im_res_expanded))
         assert start_x >= border_size
         assert end_x <= im_res_expanded.size[0] - border_size
 
         if font.getname() == ("Cinzel", "Regular"):
             # serifs lie outside border
-            start_x, end_x = blimp.find_trim_x_indices(np.array(im_res_border))
+            start_x, end_x = trim.find_trim_x_indices(np.array(im_res_border))
             assert start_x < border_size
             if not use_pil:
                 assert end_x > im_res_expanded.size[0] - border_size

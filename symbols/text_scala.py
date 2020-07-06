@@ -28,6 +28,35 @@ BIN_DIRNAME = [
     "/home/ben/code/secondary/dist"][1]
 
 
+def get_info(
+        text: str,
+        font: Font,
+        stroke_width: int,
+        border_size: Tuple[int, int]) -> Dict:
+    """draw text using external tool"""
+
+    print(f"info for '{text}'...", end="", flush=True)
+
+    id_object = (text, font, stroke_width, border_size)
+    id_string = compute_hash(id_object)
+
+    info_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + "_info.txt")
+    if not os.path.exists(info_filename):
+        config_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".txt")
+        os.makedirs(IMAGE_DIRNAME, exist_ok=True)
+        _write_config(
+            config_filename,
+            text, font, stroke_width, border_size)
+        command = _info_command(config_filename)
+        os.system(command)
+
+    info = _read_info(info_filename)
+
+    print("done")
+
+    return info
+
+
 def draw(
         text: str,
         font: Font,
@@ -42,30 +71,16 @@ def draw(
     if not os.path.exists(image_filename):
         config_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".txt")
         os.makedirs(IMAGE_DIRNAME, exist_ok=True)
-        with open(config_filename, "w") as config_file:
-            config_file.write(text + "\n")
-            name, style, size = font
-            config_file.write(f"{name};{style};{size}\n")
-            border_x, border_y = border_size
-            config_file.write(f"{border_x};{border_y}\n")
-            if stroke_width > 0:
-                config_file.write(f"{stroke_width}\n")
-        command = draw_command(config_filename)
+        _write_config(
+            config_filename,
+            text, font, stroke_width, border_size)
+        command = _draw_command(config_filename)
         os.system(command)
 
     img = cv2.imread(image_filename, cv2.IMREAD_UNCHANGED)
 
     info_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + "_info.txt")
-    with open(info_filename, "r") as info_file:
-        lines = info_file.readlines()
-        info = {}
-        for line in lines:
-            key, val = line.strip().split("\t")
-            if key == "stroke":
-                if val is not None:
-                    info[key] = float(stroke_width)
-            else:
-                info[key] = int(val)
+    info = _read_info(info_filename)
 
     return img, info
 
@@ -118,8 +133,49 @@ def compute_hash(val: Any) -> str:
     return hasher.hexdigest()
 
 
-def draw_command(config_filename: str) -> str:
+def _info_command(config_filename: str) -> str:
     """create the command to run the text executable"""
     jar_filename = os.path.join(BIN_DIRNAME, "secondary.jar")
     class_name = "bdzimmer.orbits.Text"
-    return f"java -cp {jar_filename} {class_name} {config_filename}"
+    return f"java -cp {jar_filename} {class_name} {config_filename} info"
+
+
+def _draw_command(config_filename: str) -> str:
+    """create the command to run the text executable"""
+    jar_filename = os.path.join(BIN_DIRNAME, "secondary.jar")
+    class_name = "bdzimmer.orbits.Text"
+    return f"java -cp {jar_filename} {class_name} {config_filename} draw"
+
+
+def _write_config(
+        config_filename: str,
+        text: str,
+        font: Font,
+        stroke_width: int,
+        border_size: Tuple[int, int],
+        ) -> None:
+    """write config file"""
+
+    with open(config_filename, "w") as config_file:
+        config_file.write(text + "\n")
+        name, style, size = font
+        config_file.write(f"{name};{style};{size}\n")
+        border_x, border_y = border_size
+        config_file.write(f"{border_x};{border_y}\n")
+        if stroke_width > 0:
+            config_file.write(f"{stroke_width}\n")
+
+
+def _read_info(info_filename: str) -> Dict[str, Any]:
+    """read info into dictionary"""
+    with open(info_filename, "r") as info_file:
+        lines = info_file.readlines()
+        info = {}
+        for line in lines:
+            key, val = line.strip().split("\t")
+            if key == "stroke":
+                if val is not None:
+                    info[key] = float(val)
+            else:
+                info[key] = int(val)
+    return info

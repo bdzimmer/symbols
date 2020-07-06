@@ -16,7 +16,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
-from symbols import blimp_text, multiline
+from symbols import blimp_text, multiline, trim
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
@@ -471,7 +471,7 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
                     image_trim_calc = text_standard(text, (border_x, border_y), font, color, 0)
 
                 image_trim_calc = np.array(image_trim_calc)
-                start_x, end_x = find_trim_x_indices(image_trim_calc)
+                start_x, end_x = trim.find_trim_x_indices(image_trim_calc)
                 print("border_x", border_x)
                 start_x = start_x - border_x
                 end_x = end_x + border_x
@@ -484,12 +484,12 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
 
             else:
                 print("\tcalculating trim locations based on current image")
-                start_x, end_x = find_trim_x_indices(image)
+                start_x, end_x = trim.find_trim_x_indices(image)
 
                 print("\ttrim x coords:", start_x, end_x, "(total width:", image.shape[1], ")")
                 image = image[:, start_x:end_x, :]
                 # restore borders after trimming
-                image = expand_border(image, border_x, 0)
+                image = trim.expand_border(image, border_x, 0)
 
         print(f"\tfinal dimensions: ({image.shape[1]}, {image.shape[0]})")
 
@@ -501,6 +501,7 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         height = layer.get("height")
         width = layer.get("width")
         leading = layer.get("leading", -1)
+        justify_method = layer.get("justify_method", "none")
 
         if isinstance(font_filename, str):
             font = load_font(font_filename, font_size)
@@ -523,7 +524,9 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         image = multiline.multiline(
             lines, font, color, line_height,
             (width, height),
-            (border_x, border_y))
+            (border_x, border_y),
+            justify_method
+        )
 
     elif layer_type == "concat":
         axis = layer["axis"]
@@ -543,7 +546,7 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
             else:
                 new_x = max_dim
                 new_y = sub_layer_image.shape[0]
-            sub_layer_images_resized.append(expand_down_right(sub_layer_image, new_x, new_y))
+            sub_layer_images_resized.append(trim.expand_down_right(sub_layer_image, new_x, new_y))
         print([x.shape for x in sub_layer_images])
         image = np.concatenate(sub_layer_images_resized, axis=axis)
 
@@ -574,17 +577,6 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         image = None
 
     return image
-
-
-def find_trim_x_indices(img: np.ndarray) -> Tuple[int, int]:
-    """Given an image, find the start and end indices to slice to
-    only keep columns with visible pixels"""
-
-    filled_idxs = np.where(np.sum(img[:, :, 3] > 0, axis=0))[0]
-    start_x = filled_idxs[0]
-    end_x = filled_idxs[-1] + 1
-
-    return start_x, end_x
 
 
 def memoize(fn):
@@ -727,39 +719,9 @@ def expand_border_layer(layer_image: np.ndarray, layer: Dict[str, Any]):
 
     if layer["type"] != "text" and layer["type"] != "multilinetext":
         # text layers handle their own border expansion
-        layer_image = expand_border(layer_image, border_x, border_y)
+        layer_image = trim.expand_border(layer_image, border_x, border_y)
 
     return layer_image, border_x, border_y
-
-
-def expand_border(image: np.ndarray, border_x: int, border_y: int) -> np.ndarray:
-    """add a border to an image"""
-
-    # TODO: get rid of this conversion from image to ndarray...not necessary at all
-    res = Image.new(
-        "RGBA",
-        (image.shape[1] + 2 * border_x, image.shape[0] + 2 * border_y),
-        (0, 0, 0, 0),  # (255, 255, 255, 0)
-    )
-
-    res = np.array(res)
-    lim_y = res.shape[0] - border_y if border_y > 0 else res.shape[0]
-    lim_x = res.shape[1] - border_x if border_x > 0 else res.shape[1]
-
-    res[border_y:lim_y, border_x:lim_x] = image
-    return res
-
-
-def expand_down_right(image, new_x, new_y):
-    res = Image.new(
-        "RGBA",
-        (new_x, new_y),
-        # (255, 255, 255, 0),
-        (0, 0, 0, 0)
-    )
-    res = np.array(res)
-    res[0:image.shape[0], 0:image.shape[1]] = image
-    return res
 
 
 def blend(image, opacity):

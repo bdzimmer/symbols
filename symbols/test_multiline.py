@@ -19,8 +19,9 @@ SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
 
 def test_wrap():
     """test wrap calculations"""
-    font = blimp.load_font("consola.ttf", 18)
+    # font = blimp.load_font("consola.ttf", 18)
     # font = blimp.load_font("times.ttf", 16)
+    font = blimp.load_font("Play-Regular.ttf", 64)
 
     message = (
         "Summerfield foresaw none of this. But he was not swept along " +
@@ -31,11 +32,25 @@ def test_wrap():
         "bring us another prophet like him. We all must be " +
         "prepared--individually--to act decisively as he did.")
 
-    width_max = 480
+    width_max = 720
     border_xy = (16, 16)
     lines = multiline.wrap_text(message, font, width_max)
     line_height = sum(blimp_text.getmetrics(font))
     height = line_height * len(lines)
+    color = (255, 0, 0)
+
+    # image
+
+    for justify_method in ["none", "standard", "trim"]:
+        wrap_im = multiline.multiline(
+            lines, font, color,
+            line_height,
+            (width_max, width_max),
+            border_xy,
+            justify_method)
+        _debug_save_image(Image.fromarray(wrap_im), ".", f"wrap_{justify_method}.png")
+
+    # animation
 
     im_bg = Image.new(
         "RGBA",
@@ -58,7 +73,7 @@ def test_wrap():
         frame_func = lambda x: None
 
     multiline.animate_characters(
-        lines[0:2], font, (0, 0, 255), width_max, border_xy, im_func, frame_func, 1, 3)
+        lines[0:2], font, color, width_max, border_xy, False, im_func, frame_func, 1, 3)
 
     if DEBUG:
         movie_filename = os.path.join(SCRATCH_DIRNAME, "wrap.mp4")

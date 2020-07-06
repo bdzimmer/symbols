@@ -84,7 +84,7 @@ def getsize(font: FreeTypeFont, text_str: str) -> Tuple[int, int]:
         size = (width, height)
 
     else:
-        _, info = text_scala.draw(text_str, _font_to_tuple(font), 0, BORDER_DEFAULT)
+        info = text_scala.get_info(text_str, _font_to_tuple(font), 0, BORDER_DEFAULT)
         # Important note! Info height and width may not include some antialiasing pixels!
         # import numpy as np
         # column_sums = np.sum(img, axis=0)
@@ -111,7 +111,7 @@ def getmetrics(font: Any) -> Tuple[int, int]:
     if USE_PIL:
         metrics = font.getmetrics()
     else:
-        _, info = text_scala.draw("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
+        info = text_scala.get_info("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
         metrics = (info["ascent"], info["descent"])
     return metrics
 
@@ -121,9 +121,10 @@ def getleading(font: Any) -> int:
     if USE_PIL:
         leading = 0
     else:
-        _, info = text_scala.draw("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
+        info = text_scala.get_info("Metrics", _font_to_tuple(font), 0, BORDER_DEFAULT)
         leading = info["leading"]
     return leading
+
 
 def _font_to_tuple(font: Any) -> Tuple:
     """get a tuple of font information (used by text_scala)"""

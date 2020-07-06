@@ -28,7 +28,7 @@ def test_draw():
     assert info["height"] == 87
     assert info["borderX"] == 32
     assert info["borderY"] == 32
-    assert info["stroke"] == 0.0
+    assert "stroke" not in info
 
     assert img.shape == (151, 299, 4)
 
