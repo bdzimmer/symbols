@@ -216,13 +216,17 @@ def find_duration(struct):
 
     if isinstance(struct, tuple):  # parallel events
         timed = [find_duration(y) for y in struct]
-        return tuple(timed)
+        res = tuple(timed)
     elif isinstance(struct, list):  # sequential events
         timed = [find_duration(y) for y in struct]
-        return timed
+        res = timed
     elif isinstance(struct, AnimDuration):
-        return TimedAnim(struct, struct.head_duration)
-    # TODO: for velocity, calculate time based on pen travel distance
+        res = TimedAnim(struct, struct.head_duration)
+    else:
+        # TODO: for velocity, calculate time based on pen travel distance
+        res = None
+
+    return res
 
 
 def find_starts(struct, start_time):
@@ -232,7 +236,7 @@ def find_starts(struct, start_time):
 
     if isinstance(struct, tuple):  # parallel events
         timed = [find_starts(y, start_time) for y in struct]
-        return tuple(timed)
+        res = tuple(timed)
     elif isinstance(struct, list):  # sequential events
         cur_time = start_time
         timed = []
@@ -241,24 +245,28 @@ def find_starts(struct, start_time):
             timed.append(starts)
             print(cur_time, sub_stuct.time)
             cur_time = cur_time + sub_stuct.time
-        return timed
+        res = timed
     else:
         if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
-            return find_starts(struct.anim, start_time)
+            res = find_starts(struct.anim, start_time)
         else:
-            return TimedAnim(struct.anim, start_time)
+            res = TimedAnim(struct.anim, start_time)
         # TODO: for velocity, calculate time based on pen travel distance
+
+    return res
 
 
 def flatten(struct):
     if isinstance(struct, tuple):
-        return [z for y in struct for z in flatten(y)]
+        res = [z for y in struct for z in flatten(y)]
     elif isinstance(struct, list):
-        return [z for y in struct for z in flatten(y)]
+        res = [z for y in struct for z in flatten(y)]
     elif isinstance(struct, TimedAnim):
         if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
-            return [flatten(struct.anim)]
+            res = [flatten(struct.anim)]
         else:
-            return [struct]
+            res = [struct]
     else:
-        return None
+        res = None
+
+    return res

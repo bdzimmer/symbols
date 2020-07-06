@@ -32,9 +32,15 @@ def draw_circle(context: cairo.Context, circle: symbols.Circle) -> None:
 
     # TODO: it's still a bit unclear whether I should use arc or arc_negative
     # to match opencv behavior
-    context.arc_negative(
-        circle.center[0], circle.center[1], circle.radius,
-        circle.start_angle, circle.end_angle)
+    if circle.start_angle > circle.end_angle:
+        context.arc_negative(
+            circle.center[0], circle.center[1], circle.radius,
+            circle.start_angle, circle.end_angle)
+    else:
+        context.arc(
+            circle.center[0], circle.center[1], circle.radius,
+            circle.start_angle, circle.end_angle)
+
     context.stroke()
 
 
