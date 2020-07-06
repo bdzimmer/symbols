@@ -79,6 +79,14 @@ def multiline(
             image_line = line_justified(line, font, color, line_height, box_xy, border_xy, justify_method)
             mask = Image.fromarray(np.array(image_line)[:, :, 3] > 0)
             image.paste(image_line, (0, idx * line_height), mask)
+        elif justify_method == "trim" and line != " ":
+            image_line = Image.new("RGBA", (image_width, line_height + border_y * 2), (0, 0, 0, 0))
+            blimp_text.text(image_line, (border_x, border_y), line, font, color, 0)
+            image_line = _trim_and_expand(np.array(image_line), border_x)
+            image_line = Image.fromarray(image_line)
+            mask = Image.fromarray(np.array(image_line)[:, :, 3] > 0)
+            image.paste(image_line, (0, idx * line_height), mask)
+
         else:
             blimp_text.text(image, (pos_x, pos_y), line, font, color, 0)
 
