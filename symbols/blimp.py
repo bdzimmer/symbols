@@ -121,7 +121,7 @@ def assemble_group(
         res = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 255))
 
     for layer_idx, layer in enumerate(layers):
-        print("layer", layer_idx, "...", end="", flush=True)
+        print("layer", layer_idx)
 
         # ~~~~ render
 
@@ -162,25 +162,32 @@ def assemble_group(
             "y", int(canvas_height * 0.5 - layer_height * 0.5))
 
         # offsets default to 0
-        layer_x = layer_x + layer.get("offset_x", 0)
-        layer_y = layer_y + layer.get("offset_y", 0)
+        offset_x = layer_offset(layer, "offset_x")
+        offset_y = layer_offset(layer, "offset_y")
+        layer_x = layer_x + offset_x
+        layer_y = layer_y + offset_y
 
         # throughout, layer_x and layer_y remain the coordinates
         # of the logical layer (not including border)
 
-        # however, this breaks down with the trim function below
-        # and this is probably the source of some of the
-        # out of bounds issues I've seen, since those only
-        # seem to show up when a layer has borders.
+        print("\tlogical coords before trim:", layer_x, layer_y)
+        print("\tactual coords before trim: ", layer_x - border_x, layer_y - border_y)
 
         # trim and update positions
-        # TODO: this needs to be updated to deal properly with border sizes
-        # I think it's as simple as passing border_x and border_y in and adjusting
-        # layer_x and layer_y accordingly
-        layer_image_trimmed, layer_x, layer_y = trim.trim(
-            layer_image, layer_x, layer_y, canvas_width, canvas_height)
 
-        print()
+        # old behavior
+        # layer_image_trimmed, (layer_x, layer_y) = trim.trim(
+        #     layer_image,
+        #     (layer_x, layer_y),
+        #     (canvas_width, canvas_height))
+
+        # new behavior
+        layer_image_trimmed, (layer_x, layer_y) = trim.trim_border(
+            layer_image,
+            (layer_x, layer_y),
+            (border_x, border_y),
+            (canvas_width, canvas_height))
+
         print("\ttrimmed shape:", layer_image_trimmed.shape)
         print("\tlogical coords:", layer_x, layer_y)
         print("\tactual coords: ", layer_x - border_x, layer_y - border_y)
@@ -195,11 +202,13 @@ def assemble_group(
 
         opacity = layer.get("opacity", 1.0)
         if opacity < 1.0:
-            print("blend...", end="", flush=True)
+            print("\tblend")
             layer_image_trimmed = blend(layer_image_trimmed, opacity)
 
         image_pil = Image.fromarray(layer_image_trimmed)
         res.alpha_composite(image_pil, (layer_x - border_x, layer_y - border_y))
+
+        # ~~~~ debugging
 
         if layer_idx in debug_guides:
 
@@ -291,8 +300,7 @@ def text_custom_kerning(
 
     # Loop through and draw letters
 
-    offset_x = border_xy[0]
-    offset_y = border_xy[1]
+    offset_x, offset_y = border_xy
     for letter, letter_width in zip(text, widths):
         if stroke_width > 0:
             blimp_text.text(
@@ -701,6 +709,25 @@ def apply_effect(image: np.ndarray, effect: Dict, resources_dirname: str) -> np.
         print("\tunrecognized effect type '" + str(effect_type) + "'")
 
     return image
+
+
+def layer_offset(layer: Dict[str, Any], key: str) -> int:
+    """get layer offsets with special cases for certain layer types"""
+    offset = layer.get(key, 0)
+
+    # Main use case here is centering text that has been rotated
+    # 90 degrees clockwise for a book spine, etc. Basically makes
+    # the thing that's being centered only the ascent region.
+    #
+    # There are probably similar things that would be useful for
+    # non-rotated text, etc.
+
+    if offset == "half_descent" and layer["type"] == "text":
+        font = load_font(layer["font"], layer["size"])
+        ascent, descent = blimp_text.getmetrics(font)
+        offset = - int(0.5 * descent)
+
+    return offset
 
 
 def expand_border_layer(layer_image: np.ndarray, layer: Dict[str, Any]):
