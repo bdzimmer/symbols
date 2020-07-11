@@ -53,3 +53,32 @@ def find_trim_x_indices(img: np.ndarray) -> Tuple[int, int]:
     end_x = filled_idxs[-1] + 1
 
     return start_x, end_x
+
+
+def trim(
+        layer_image: np.ndarray,
+        layer_x: int,
+        layer_y: int,
+        canvas_width: int,
+        canvas_height: int) -> Tuple[np.ndarray, int, int]:
+
+    """trim the layer to fit the canvas"""
+
+    start_x = 0
+    end_x = layer_image.shape[1]
+    start_y = 0
+    end_y = layer_image.shape[0]
+
+    if layer_x < 0:
+        start_x = 0 - layer_x
+        layer_x = 0
+    if layer_x + end_x > canvas_width:
+        end_x = start_x + canvas_width
+
+    if layer_y < 0:
+        start_y = 0 - layer_y
+        layer_y = 0
+    if layer_y + end_y > canvas_height:
+        end_y = start_y + canvas_height
+
+    return layer_image[start_y:end_y, start_x:end_x, :], layer_x, layer_y

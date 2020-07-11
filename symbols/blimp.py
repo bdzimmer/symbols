@@ -161,6 +161,10 @@ def assemble_group(
         layer_y = layer.get(
             "y", int(canvas_height * 0.5 - layer_height * 0.5))
 
+        # offsets default to 0
+        layer_x = layer_x + layer.get("offset_x", 0)
+        layer_y = layer_y + layer.get("offset_y", 0)
+
         # throughout, layer_x and layer_y remain the coordinates
         # of the logical layer (not including border)
 
@@ -173,7 +177,7 @@ def assemble_group(
         # TODO: this needs to be updated to deal properly with border sizes
         # I think it's as simple as passing border_x and border_y in and adjusting
         # layer_x and layer_y accordingly
-        layer_image_trimmed, layer_x, layer_y = trim(
+        layer_image_trimmed, layer_x, layer_y = trim.trim(
             layer_image, layer_x, layer_y, canvas_width, canvas_height)
 
         print()
@@ -428,13 +432,15 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         force_custom_kerning = layer.get("force_custom_kerning", False)
         trim_x = layer.get("trim_x", True)
 
-        if isinstance(font_filename, str):
-            font = load_font(font_filename, font_size)
-            # font_tuple = blimp_text._font_to_tuple(font)
-        else:
-            font = load_font(font_filename[0], font_size), font_filename[1]
-            # font_tuple = blimp_text._font_to_tuple(font[0])
-        # print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
+        # if isinstance(font_filename, str):
+        #     font = load_font(font_filename, font_size)
+        #     # font_tuple = blimp_text._font_to_tuple(font)
+        # else:
+        #     font = load_font(font_filename[0], font_size), font_filename[1]
+        #     # font_tuple = blimp_text._font_to_tuple(font[0])
+        # # print(f"\t{font_tuple[0]} {font_tuple[1]} {font_tuple[2]}")
+
+        font = load_font(font_filename, font_size)
 
         # The original behavior here was (0, 0) for borders
 
@@ -503,10 +509,13 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         leading = layer.get("leading", -1)
         justify_method = layer.get("justify_method", "none")
 
-        if isinstance(font_filename, str):
-            font = load_font(font_filename, font_size)
-        else:
-            font = load_font(font_filename[0], font_size), font_filename[1]
+        # if isinstance(font_filename, str):
+        #     font = load_font(font_filename, font_size)
+        # else:
+        #     font = load_font(font_filename[0], font_size), font_filename[1]
+
+        font = load_font(font_filename, font_size)
+
         ascent, descent = blimp_text.getmetrics(font)
         line_height = ascent + descent
 
@@ -595,10 +604,15 @@ def memoize(fn):
 
 
 @memoize
-def load_font(filename: str, font_size: int) -> ImageFont.FreeTypeFont:
+def load_font(filename: Any, font_size: int) -> Any:
     """load a font"""
-    font_filename = os.path.join(FONTS_DIRNAME, filename)
-    return ImageFont.truetype(font_filename, font_size)
+    if isinstance(filename, str):
+        font_filename = os.path.join(FONTS_DIRNAME, filename)
+        font = ImageFont.truetype(font_filename, font_size)
+    else:
+        font_filename = os.path.join(FONTS_DIRNAME, filename[0])
+        font = (ImageFont.truetype(font_filename, font_size), filename[1])
+    return font
 
 
 @memoize
@@ -620,35 +634,15 @@ def add_alpha(image: np.ndarray) -> np.ndarray:
         axis=2)
 
 
-def trim(layer_image, layer_x, layer_y, canvas_width, canvas_height):
-    """trim the layer to fit the canvas"""
-
-    start_x = 0
-    end_x = layer_image.shape[1]
-    start_y = 0
-    end_y = layer_image.shape[0]
-
-    if layer_x < 0:
-        start_x = 0 - layer_x
-        layer_x = 0
-    if layer_x + end_x > canvas_width:
-        end_x = start_x + canvas_width
-
-    if layer_y < 0:
-        start_y = 0 - layer_y
-        layer_y = 0
-    if layer_y + end_y > canvas_height:
-        end_y = start_y + canvas_height
-
-    return layer_image[start_y:end_y, start_x:end_x, :], layer_x, layer_y
-
-
-def apply_effect(image, effect, resources_dirname):
+def apply_effect(image: np.ndarray, effect: Dict, resources_dirname: str) -> np.ndarray:
     """layer effects!"""
     effect_type = effect["type"]
 
     if effect_type == "flip_ud":
         image = np.array(Image.fromarray(image).transpose(Image.FLIP_TOP_BOTTOM))
+
+    elif effect_type == "rotate_clockwise":
+        image = np.rot90(image, k=3, axes=(0, 1))
 
     elif effect_type == "blend":
         opacity = effect["opacity"]
@@ -699,6 +693,7 @@ def apply_effect(image, effect, resources_dirname):
     elif effect_type == "scale":
         x_scale = effect.get("x", 1.0)
         y_scale = effect.get("y", 1.0)
+        # TODO: add better resize method here
         image = cv2.resize(
             image, (int(x_scale * image.shape[1]), int(y_scale * image.shape[0])))
 
