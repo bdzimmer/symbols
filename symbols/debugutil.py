@@ -26,14 +26,14 @@ def show(img, title):
 
     _, _, n_channels = img.shape
 
-    print("img max before flatten:  ", np.max(img[:, :, 0:3]))
+    # print("img max before flatten:  ", np.max(img[:, :, 0:3]))
 
     if n_channels > 3:
         # print("flattening alpha")
-        print("alpha max before flatten:", np.max(img[:, :, 3]))
+        # print("alpha max before flatten:", np.max(img[:, :, 3]))
         img = flatten_alpha(img)
 
-    print("img max after flatten:  ", np.max(img[:, :, 0:3]))
+    # print("img max after flatten:  ", np.max(img[:, :, 0:3]))
 
     cv2.namedWindow(title, WINDOW_STYLE)
     cv2.imshow(title, img[:, :, [2, 1, 0]])

@@ -58,12 +58,12 @@ def find_trim_x_indices(img: np.ndarray) -> Tuple[int, int]:
 def trim(
         layer_image: np.ndarray,
         layer_xy: Tuple[int, int],
-        canvas_xy: Tuple[int, int]) -> Tuple[np.ndarray, Tuple[int, int]]:
+        canvas_dim: Tuple[int, int]) -> Tuple[np.ndarray, Tuple[int, int]]:
 
     """trim a layer to fit a canvas"""
 
     layer_x, layer_y = layer_xy
-    canvas_width, canvas_height = canvas_xy
+    canvas_width, canvas_height = canvas_dim
 
     start_x = 0
     end_x = layer_image.shape[1]
@@ -74,13 +74,13 @@ def trim(
         start_x = 0 - layer_x
         layer_x = 0
     if layer_x + end_x > canvas_width:
-        end_x = start_x + canvas_width
+        end_x = canvas_width - layer_x
 
     if layer_y < 0:
         start_y = 0 - layer_y
         layer_y = 0
     if layer_y + end_y > canvas_height:
-        end_y = start_y + canvas_height
+        end_y = canvas_height - layer_y
 
     return layer_image[start_y:end_y, start_x:end_x, :], (layer_x, layer_y)
 
@@ -89,7 +89,7 @@ def trim_border(
         layer_image: np.ndarray,
         layer_xy: Tuple[int, int],
         border_xy: Tuple[int, int],
-        canvas_xy: Tuple[int, int]) -> Tuple[np.ndarray, Tuple[int, int]]:
+        canvas_dim: Tuple[int, int]) -> Tuple[np.ndarray, Tuple[int, int]]:
 
     """trim a layer to fit a canvas, taking borders into account"""
 
@@ -104,7 +104,7 @@ def trim_border(
     border_x, border_y = border_xy
     layer_xy_adjusted = (layer_x - border_x, layer_y - border_y)
 
-    layer_image, layer_xy_adj = trim(layer_image, layer_xy_adjusted, canvas_xy)
+    layer_image, layer_xy_adj = trim(layer_image, layer_xy_adjusted, canvas_dim)
 
     layer_x_adj, layer_y_adj = layer_xy_adj
     layer_x = layer_x_adj + border_x
