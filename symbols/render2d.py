@@ -43,21 +43,35 @@ def draw_frame(
         # do the base animation, creating a derived primitive
 
         if isinstance(anim, symbols.AnimDuration):
+            # basically just a single pen type
             frac = np.clip(
                 float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
 
-            # TODO: consider dealing with the <=0.0 and >=1.0 cases here
-
-            # TODO: consider moving the frac dispatch into the symbols module
-            if isinstance(prim, symbols.Line):
-                prim_animated = symbols.line_frac(prim, frac)
-            elif isinstance(prim, symbols.Circle):
-                prim_animated = symbols.circle_frac(prim, frac)
-            elif isinstance(prim, symbols.Polyline):
-                prim_animated = symbols.polyline_frac(prim, frac)
-            else:
-                print("No implementation for primitive type", anim.__class__)
-                prim_animated = None
+            prim_animated = symbols.frac_primitive(prim, frac)
+        elif isinstance(anim, symbols.AnimDurationMulti):
+            frac = np.clip(
+                float(time - timed_anim.time) / timed_anim.anim.duration, 0.0, 1.0)
+            prim_animated = prim
+            for mod in anim.mods:
+                if mod == "pen":
+                    prim_animated = symbols.frac_primitive(prim_animated, frac)
+                elif mod[0] == "translate":
+                    _, t_start, t_end = mod
+                    t_cur = symbols.interp(t_start, t_end, frac)
+                    prim_animated = symbols.translate_primitive(prim_animated, t_cur)
+                elif mod[0] == "scale":
+                    _, fac_start, fac_end = mod
+                    fac_cur = fac_start + frac * (fac_end - fac_start)
+                    if isinstance(prim, symbols.Line):
+                        center_cur = (0.0, 0.0)
+                    else:
+                        center_cur = prim.center
+                    prim_animated = symbols.scale_center_primitive(prim_animated, fac_cur, center_cur)
+                elif mod[0] == "scale_center":
+                    _, fac_start, fac_end, center_start, center_end = mod
+                    fac_cur = fac_start + frac * (fac_end - fac_start)
+                    center_cur = symbols.interp(center_start, center_end, frac)
+                    prim_animated = symbols.scale_center_primitive(prim_animated, fac_cur, center_cur)
         else:
             print("No implementation for animation type", anim.__class__)
             prim_animated = None

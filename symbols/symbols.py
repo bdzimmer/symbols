@@ -4,6 +4,7 @@ S Y M B O L S
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
+from typing import Tuple, List
 import math
 
 import attr
@@ -47,6 +48,8 @@ class Circle(Primitive):
 @attr.s(frozen=True)
 class Polyline(Primitive):
     """a sequence of line segments"""
+
+    center = attr.ib()
     lines = attr.ib()
     joint_type = attr.ib()
     closed = attr.ib()
@@ -85,12 +88,21 @@ class AnimVel(Animation):
     head_vel = attr.ib()  # head velocity
     tail_vel = attr.ib()  # tail velocity
 
+# TODO: AnimVelMulti???
 
 @attr.s(frozen=True)
 class AnimDuration(Animation):
     primitive = attr.ib()
     label = attr.ib()
     head_duration = attr.ib()
+
+
+@attr.s(frozen=True)
+class AnimDurationMulti(Animation):
+    primitive = attr.ib()
+    label = attr.ib()
+    duration = attr.ib()
+    mods = attr.ib()
 
 
 @attr.s(frozen=True)
@@ -121,11 +133,6 @@ def sub(x, y):
 def scale(pnt, frac):
     """scale a point"""
     return pnt[0] * frac, pnt[1] * frac
-
-
-def to_int(x):
-    """convert to integers"""
-    return int(x[0]), int(x[1])
 
 
 def length(line: Line) -> float:
@@ -207,6 +214,22 @@ def scale_center(pnt, fac, center):
     return add(scale(sub(pnt, center), fac), center)
 
 
+# ~~~~ animation utilities ~~~~
+
+
+def radiate(time: float, num_facs: int, rate: float, maximum: float) -> List[float]:
+    """generate cycling scale factors given time"""
+    # used for animation
+
+    range_max = maximum / rate
+    range_step = range_max / num_facs
+
+    return [
+        1.0 + math.fmod((time + x) * rate, maximum)
+        for x in np.arange(0.0, range_max, range_step)
+    ]
+
+
 # ~~~~ functions for constructing animations ~~~~
 
 
@@ -222,6 +245,8 @@ def find_duration(struct):
         res = timed
     elif isinstance(struct, AnimDuration):
         res = TimedAnim(struct, struct.head_duration)
+    elif isinstance(struct, AnimDurationMulti):
+        res = TimedAnim(struct, struct.duration)
     else:
         # TODO: for velocity, calculate time based on pen travel distance
         res = None
@@ -270,3 +295,80 @@ def flatten(struct):
         res = None
 
     return res
+
+
+# ~~~~ dispatching functions for animating and transforming primitives ~~~~
+
+def frac_primitive(prim: Primitive, frac: float) -> Primitive:
+    """find a fraction of a primitive for animating the pen"""
+
+    # TODO: consider dealing with the <=0.0 and >=1.0 cases here
+
+    if isinstance(prim, Line):
+        prim_animated = line_frac(prim, frac)
+    elif isinstance(prim, Circle):
+        prim_animated = circle_frac(prim, frac)
+    elif isinstance(prim, Polyline):
+        prim_animated = polyline_frac(prim, frac)
+    else:
+        print("No implementation of animate_pen for primitive type", prim.__class__)
+        prim_animated = None
+
+    return prim_animated
+
+
+def translate_primitive(prim: Primitive, trans: Tuple) -> Primitive:
+    """translate"""
+
+    if isinstance(prim, Line):
+        prim_animated = attr.evolve(
+            prim,
+            start=add(prim.start, trans),
+            end=add(prim.end, trans))
+    elif isinstance(prim, Circle):
+        prim_animated = attr.evolve(
+            prim,
+            center=add(prim.center, trans))
+    elif isinstance(prim, Polyline):
+        prim_animated = attr.evolve(
+            prim,
+            center=add(prim.center, trans),
+            lines=[
+                attr.evolve(
+                    x,
+                    start=add(x.start, trans),
+                    end=add(x.end, trans))
+                for x in prim.lines])
+    else:
+        print("No implementation of translate for primitive type", prim.__class__)
+        prim_animated = None
+
+    return prim_animated
+
+
+def scale_center_primitive(prim: Primitive, fac: float, center: Tuple) -> Primitive:
+    """translate"""
+
+    if isinstance(prim, Line):
+        prim_animated = attr.evolve(
+            prim,
+            start=scale_center(prim.start, fac, center),
+            end=scale_center(prim.end, fac, center))
+    elif isinstance(prim, Circle):
+        prim_animated = attr.evolve(
+            prim,
+            radius=fac * prim.radius)
+    elif isinstance(prim, Polyline):
+        prim_animated = attr.evolve(
+            prim,
+            lines=[
+                attr.evolve(
+                    x,
+                    start=scale_center(x.start, fac, center),
+                    end=scale_center(x.end, fac, center))
+                for x in prim.lines])
+    else:
+        print("No implementation of scale for primitive type", prim.__class__)
+        prim_animated = None
+
+    return prim_animated

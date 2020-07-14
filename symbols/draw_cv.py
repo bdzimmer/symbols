@@ -12,15 +12,14 @@ import cv2
 import numpy as np
 
 from symbols import symbols
-from symbols.symbols import to_int
 
 
 def draw_line(img, line) -> None:
     """draw a line on an image using OpenCV"""
     cv2.line(
         img,
-        to_int(line.start),
-        to_int(line.end),
+        _to_int(line.start),
+        _to_int(line.end),
         line.color,
         line.thickness,
         cv2.LINE_AA)
@@ -33,8 +32,8 @@ def draw_circle(img, circle) -> None:
 
     cv2.ellipse(
         img,
-        to_int(circle.center),
-        to_int((circle.radius, circle.radius)),
+        _to_int(circle.center),
+        _to_int((circle.radius, circle.radius)),
         circle.start_angle * 360.0 / symbols.TAU,
         0.0,
         # end_angle,
@@ -60,3 +59,8 @@ def draw(canvas: np.ndarray, prim: symbols.Primitive) -> None:
         draw_line(canvas, prim)
     elif isinstance(prim, symbols.Circle):
         draw_circle(canvas, prim)
+
+
+def _to_int(x):
+    """convert to integers"""
+    return int(x[0]), int(x[1])

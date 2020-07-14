@@ -35,6 +35,7 @@ def test_draw():
     circle = symbols.Circle(
         (128, 128), 64, 0.0, symbols.TAU * 0.75, 2, 0, (255, 0, 0))
     polyline_closed = symbols.Polyline(
+        (0, 0),
         [
             symbols.Line((16, 16), (240, 16), None, None, None),
             symbols.Line((240, 16), (240, 240), None, None, None),
@@ -42,12 +43,13 @@ def test_draw():
         ],
         "", True, 2, 0, (255, 0, 0))
     polyline_open = symbols.Polyline(
+        (0, 0),
         [
             symbols.Line((16, 16), (16, 240), None, None, None),
             symbols.Line((16, 240), (240, 16), None, None, None)
         ],
         "", False, 2, 0, (255, 0, 0))
-    polyline_empty = symbols.Polyline([], "", False, 2, 0, (255, 0, 0))
+    polyline_empty = symbols.Polyline((0, 0), [], "", False, 2, 0, (255, 0, 0))
 
     primitives = [line, circle, polyline_closed, polyline_open]
 
