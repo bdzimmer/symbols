@@ -77,21 +77,14 @@ class Dot(Primitive):
 
 @attr.s(frozen=True)
 class Animation:
+    """An animated primitive"""
     primitive = attr.ib()
     label = attr.ib()
 
-
-@attr.s(frozen=True)
-class AnimVel(Animation):
-    primitive = attr.ib()
-    label = attr.ib()
-    head_vel = attr.ib()  # head velocity
-    tail_vel = attr.ib()  # tail velocity
-
-# TODO: AnimVelMulti???
 
 @attr.s(frozen=True)
 class AnimDuration(Animation):
+    """Primitive animated by drawing in sequence"""
     primitive = attr.ib()
     label = attr.ib()
     head_duration = attr.ib()
@@ -99,6 +92,7 @@ class AnimDuration(Animation):
 
 @attr.s(frozen=True)
 class AnimDurationMulti(Animation):
+    """Primitive with multple animations"""
     primitive = attr.ib()
     label = attr.ib()
     duration = attr.ib()
@@ -107,6 +101,7 @@ class AnimDurationMulti(Animation):
 
 @attr.s(frozen=True)
 class TimedAnim:
+    """An animation with a time (duration or start time)"""
     anim = attr.ib()
     time = attr.ib()
 
@@ -115,19 +110,19 @@ class TimedAnim:
 
 def circle_point(angle, radius):
     """get a point on a circle"""
-    x = radius * np.cos(angle)
-    y = radius * np.sin(angle)
-    return x, y
+    x_coord = radius * np.cos(angle)
+    y_coord = radius * np.sin(angle)
+    return x_coord, y_coord
 
 
-def add(x, y):
+def add(pt_0, pt_1):
     """add point tuples"""
-    return x[0] + y[0], x[1] + y[1]
+    return pt_0[0] + pt_1[0], pt_0[1] + pt_1[1]
 
 
-def sub(x, y):
+def sub(pt_0, pt_1):
     """subract point tuples"""
-    return x[0] - y[0], x[1] - y[1]
+    return pt_0[0] - pt_1[0], pt_0[1] - pt_1[1]
 
 
 def scale(pnt, frac):
@@ -137,9 +132,9 @@ def scale(pnt, frac):
 
 def length(line: Line) -> float:
     """length of a line"""
-    dx = line.end[0] - line.start[0]
-    dy = line.end[1] - line.start[1]
-    return math.sqrt(dx * dx + dy * dy)
+    d_x = line.end[0] - line.start[0]
+    d_y = line.end[1] - line.start[1]
+    return math.sqrt(d_x * d_x + d_y * d_y)
 
 
 def line_frac(line: Line, frac: float) -> Line:
@@ -272,7 +267,7 @@ def find_starts(struct, start_time):
             cur_time = cur_time + sub_stuct.time
         res = timed
     else:
-        if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
+        if isinstance(struct.anim, (tuple, list)):
             res = find_starts(struct.anim, start_time)
         else:
             res = TimedAnim(struct.anim, start_time)
@@ -282,12 +277,13 @@ def find_starts(struct, start_time):
 
 
 def flatten(struct):
+    """flatten a a nested structure of TimedAnims"""
     if isinstance(struct, tuple):
         res = [z for y in struct for z in flatten(y)]
     elif isinstance(struct, list):
         res = [z for y in struct for z in flatten(y)]
     elif isinstance(struct, TimedAnim):
-        if isinstance(struct.anim, tuple) or isinstance(struct.anim, list):
+        if isinstance(struct.anim, (tuple, list)):
             res = [flatten(struct.anim)]
         else:
             res = [struct]
