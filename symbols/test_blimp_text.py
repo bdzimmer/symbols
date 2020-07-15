@@ -25,7 +25,6 @@ def test_blimp_text():
     # but I think that module will go away eventually.
 
     font = blimp.load_font("Cinzel-Regular.ttf", 100)
-    missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
 
     args_list = [
         ("AVIARY", (0, 0), font, (0, 255, 255), 2),
@@ -55,9 +54,13 @@ def test_text_border():
     and how borders are necessary to capture these pixels."""
 
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
 
     # The goal here is easy comparison by flipping back and forth in PyCharm.
-    # TODO: also add programatic verification that font extends into border
+    # There is also some programatic verification that font serifs extend
+    # into borders for certain configurations.
+
+    # a few fonts for testing different issues:
 
     # serifs overflow size
     font = blimp.load_font("Cinzel-Regular.ttf", 200)
@@ -68,24 +71,14 @@ def test_text_border():
     # gaps between start position and font pixels
     # font = blimp.load_font("Orbitron-Bold.ttf", 200)
 
-    missing = (0, 0, 0, 0)  # note that this is ignored for text_scala mode
-
     text = "AVIARY"
     # text = "axoxo"
     text_color = (0, 255, 255, 128)
     # text_color = (0, 255, 255, 255)
     text_stroke_width = 0
-    text_stroke_color = missing
     border_size = 32
     text_kern_add = 0
-    debug_lines = True
-
-    # def add_guides(img, size):
-    #     """add guides"""
-    #     img[border_size, :, :] = (128, 128, 128, 255)
-    #     img[:, border_size, :] = (128, 128, 128, 255)
-    #     img[border_size + size[1], :, :] = (128, 128, 128, 255)
-    #     img[:, border_size + size[0], :] = (128, 128, 128, 255)
+    debug_lines = False  # note that enabling this will disable color tests
 
     for use_pil in [False, True]:
         blimp_text.USE_PIL = use_pil
@@ -143,6 +136,8 @@ def test_text_border():
         # add_guides(im_custom_border, im_custom.size)
         im_custom_border = Image.fromarray(im_custom_border)
 
+        # verify that sizes match
+
         assert im_res_border.size == im_res_expanded.size
         assert im_custom_border.size == im_custom_expanded.size
 
@@ -159,6 +154,22 @@ def test_text_border():
             assert start_x < border_size
             if not use_pil:
                 assert end_x > im_res_expanded.size[0] - border_size
+
+        if not debug_lines:
+            # verify expected colors
+            # Note that PIL right now does not do colors properly!
+            for img in [im_res_border, im_res_expanded, im_custom_border, im_res_expanded]:
+                img_array = np.array(img)
+                print("r:", set(np.unique(img_array[:, :, 0])))
+                print("g:", set(np.unique(img_array[:, :, 1])))
+                print("b:", set(np.unique(img_array[:, :, 2])))
+                print("a count:", len(set(np.unique(img_array[:, :, 3]))))
+                print()
+                assert np.alltrue(img_array[:, :, 0] == 0)
+                assert set(np.unique(img_array[:, :, 1])) == {0, 255}
+                assert set(np.unique(img_array[:, :, 2])) == {0, 255}
+                assert len(set(np.unique(img_array[:, :, 3]))) > 2
+                assert np.alltrue(img_array[:, :, 3] <= 128)
 
         # ~~~~ save stuff ~~~~
 

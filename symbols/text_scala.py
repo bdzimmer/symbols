@@ -95,7 +95,7 @@ def draw_on_image(
         border_size: Tuple[int, int]
         ) -> Dict[str, int]:
 
-    """draw text onto a PIL Image, mutating it"""
+    """draw text onto a (transparent) PIL Image, mutating it"""
 
     # pylint: disable=too-many-arguments
 
@@ -104,8 +104,6 @@ def draw_on_image(
 
     # Eventually, I'd like to get away from using PIL.
     # But this is the most convenient for testing at the moment.
-
-    # Currently assumes that the PIL Image has an alpha channel.
 
     im_text, info = draw(text, font, stroke_width, border_size)
     im_text_alpha = im_text[:, :, 3]
@@ -116,14 +114,25 @@ def draw_on_image(
     # colorize
     im_text = conversions.colorize(im_text_alpha, fill)
 
-    # I think the only place where this will screw up is sequentially
-    # drawn overlapping letters.
-    # TODO: could possibly require a maxing operation for mask locations.
-    im_text_pil = Image.fromarray(im_text)
-    im_mask_pil = Image.fromarray(im_text[:, :, 3] > 0)
-    im_dest.paste(im_text_pil, pos_adj, mask=im_mask_pil)
+    # masked paste onto destination image at position
+    masked_paste(im_dest, im_text, pos_adj)
 
     return info
+
+
+def masked_paste(
+        im_dest: Image.Image,
+        im_text: np.array,
+        pos: Tuple[int, int]) -> None:
+    """masked paste text onto a (transparent) image at a location"""
+
+    # I think the only place where this will screw up is sequentially
+    # drawn overlapping letters.
+    # TODO: the solution would be some kind of maxing operation for mask locations.
+
+    im_text_pil = Image.fromarray(im_text)
+    im_mask_pil = Image.fromarray(im_text[:, :, 3] > 0)
+    im_dest.paste(im_text_pil, pos, mask=im_mask_pil)
 
 
 def compute_hash(val: Any) -> str:

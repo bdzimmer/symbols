@@ -8,10 +8,12 @@ Stuff for refactoring text in blimp.
 
 from typing import Any, Tuple
 
+import numpy as np
 from PIL import ImageDraw
+from PIL import Image
 from PIL.ImageFont import FreeTypeFont
 
-from symbols import text_scala
+from symbols import text_scala, conversions
 
 
 USE_PIL = False
@@ -19,47 +21,52 @@ BORDER_DEFAULT = (16, 16)
 
 
 def text(
-        image,
+        image: Image.Image,
         xy: Tuple[int, int],
         text_str: str,
         font: Any,
         fill: text_scala.Color,
         stroke_width: int) -> None:
 
-    """Draw text on an image, mutating it."""
+    """Draw text on a (transparent) image, mutating it."""
 
     # pylint: disable=too-many-arguments
+
+    # !!!Assumes that the destination is transparent and text will
+    # be simply masked on!!!
 
     # Draw text with either fill or stroke.
     # (text_scala does not support both at the same time)
 
-    # TODO: make BORDER_DEFAULT a parameter
+    # TODO: make BORDER_DEFAULT a parameter somehow
+    # BORDER_DEFAULT is extra margin added that allows
+    # text_scala to capture serifs or pieces of antialising
+    # that extend beyond the bounds. It may need to be larger
+    # than (16, 16) for very large font sizes.
 
     if USE_PIL:
-        # TODO: this may have to be revised now, lol
-        # I wonder if this is handling transparency now, lol
-        draw = ImageDraw.Draw(image)
+        im_text_alpha = Image.new("L", image.size, color=0)
+        draw = ImageDraw.Draw(im_text_alpha)  # image
         if stroke_width > 0:
-            # Note that PIL doesn't seem to support alpha in stroke...interesting!
-            stroke_width = stroke_width // 2
-            stroke_fill = fill
-            fill = (0, 0, 0, 0)
             draw.text(
                 xy=(xy[0] - stroke_width, xy[1] - stroke_width),
                 text=text_str,
                 font=font,
-                fill=fill,
+                fill=0,
                 stroke_width=stroke_width,
-                stroke_fill=stroke_fill)
+                stroke_fill=255)
         else:
-            stroke_fill = (0, 0, 0, 0)
             draw.text(
                 xy=xy,
                 text=text_str,
                 font=font,
-                fill=fill,
+                fill=255,
                 stroke_width=0,
-                stroke_fill=stroke_fill)
+                stroke_fill=0)
+
+        im_text = conversions.colorize(np.array(im_text_alpha), fill)
+        text_scala.masked_paste(image, im_text, (0, 0))
+
     else:
         text_scala.draw_on_image(
             im_dest=image,
