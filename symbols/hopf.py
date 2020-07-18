@@ -219,6 +219,34 @@ def light_and_flatten_geometry(
     return pts_0, pts_1, colors, depths
 
 
+def apply_perpsective_transformation(
+        pts: np.ndarray,        # 3xn
+        cam_trans: np.ndarray,  # 4x4
+        view_pos,               # 3
+        canvas_size
+        ) -> np.ndarray:        # 2xn
+
+    """
+    apply perspective transformation to 3D points
+    shift to center on a canvas
+    and flip y coordinate
+    does not convert to integer!
+    """
+
+    width, height = canvas_size
+    p_shift = np.array([width * 0.5, height * 0.5])[:, np.newaxis]
+
+    # apply perspective transformation
+    pts_c = transforms.transform(cam_trans, pts)
+    print("pts_c:", np.transpose(pts_c))
+    pts_p = transforms.perspective(pts_c, view_pos)
+    # align
+    pts_p[1, :] = 0.0 - pts_p[1, :]  # flip y for image layout
+    pts_p = pts_p + p_shift
+
+    return pts_p
+
+
 def lighting_func_generic(norms, color, power, transparent):
     """paramaterized sort of generic lighting function"""
 
