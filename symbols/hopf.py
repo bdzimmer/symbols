@@ -238,7 +238,6 @@ def apply_perpsective_transformation(
 
     # apply perspective transformation
     pts_c = transforms.transform(cam_trans, pts)
-    print("pts_c:", np.transpose(pts_c))
     pts_p = transforms.perspective(pts_c, view_pos)
     # align
     pts_p[1, :] = 0.0 - pts_p[1, :]  # flip y for image layout
