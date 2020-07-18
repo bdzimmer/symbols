@@ -74,13 +74,13 @@ def trim(
         start_x = 0 - layer_x
         layer_x = 0
     if layer_x + end_x > canvas_width:
-        end_x = canvas_width - layer_x
+        end_x = start_x + canvas_width - layer_x
 
     if layer_y < 0:
         start_y = 0 - layer_y
         layer_y = 0
     if layer_y + end_y > canvas_height:
-        end_y = canvas_height - layer_y
+        end_y = start_y + canvas_height - layer_y
 
     return layer_image[start_y:end_y, start_x:end_x, :], (layer_x, layer_y)
 
