@@ -55,6 +55,17 @@ def find_trim_x_indices(img: np.ndarray) -> Tuple[int, int]:
     return start_x, end_x
 
 
+def find_trim_y_indices(img: np.ndarray) -> Tuple[int, int]:
+    """Given an image, find the start and end indices to slice to
+    only keep columns with visible pixels"""
+
+    filled_idxs = np.where(np.sum(img[:, :, 3] > 0, axis=1))[0]
+    start_y = filled_idxs[0]
+    end_y = filled_idxs[-1] + 1
+
+    return start_y, end_y
+
+
 def trim(
         layer_image: np.ndarray,
         layer_xy: Tuple[int, int],

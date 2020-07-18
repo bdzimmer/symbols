@@ -20,11 +20,12 @@ INTERP_MODE = cv2.INTER_LANCZOS4
 
 def composite_image(
         canvas_size: Tuple[int, int],
-        trim_size: Tuple[int, int],
+        trim_size: Tuple[float, float],
         info: cl.CoverLayoutInfo,
         wrap_image: np.ndarray,
         ebook_cover_image: np.ndarray,
-        dpi: int
+        dpi: int,
+        shift_xy: Tuple[int, int]
         ) -> np.ndarray:
     """a higher-level function for making an artsy cover composite image"""
 
@@ -37,12 +38,19 @@ def composite_image(
         wrap_image=wrap_image,
         dpi=dpi,
         y_angle=symbols.TAU * 0.09,
-        x_shift=0.2 * canvas_size[0],
         view_pos_scale=1.25,
         view_shift=10.0,
         spine_shade=0.8,
         wireframe=False
     )
+
+    trim_x = trim.find_trim_x_indices(cover_img)
+    trim_y = trim.find_trim_y_indices(cover_img)
+    cover_img = cover_img[:, trim_x[0]:trim_x[1], :]
+    cover_img = cover_img[trim_y[0]:trim_y[1], :]
+
+    cover_img, shift_xy = trim.trim(
+        cover_img, shift_xy, canvas_size)
 
     cover_img_pil = Image.fromarray(cover_img)
     img_bg, _ = trim.trim(
@@ -51,14 +59,11 @@ def composite_image(
          int(0.5 * (canvas_size[1] - ebook_cover_image.shape[0]))),
         canvas_size)
 
-    # print(ebook_cover_image.shape)
-    # print(img_bg.shape)
-
     img_bg = img_bg[:, :, 0:3]
-    img_bg = np.array(img_bg * 0.5, dtype=np.ubyte)
+    img_bg = np.array(img_bg * 0.4, dtype=np.ubyte)
     img_bg = blimp.add_alpha(img_bg)
     img_bg_pil = Image.fromarray(img_bg)
-    img_bg_pil.alpha_composite(cover_img_pil)
+    img_bg_pil.alpha_composite(cover_img_pil, shift_xy)
 
     return np.array(img_bg_pil)
 
@@ -70,8 +75,7 @@ def cover_image_3d(
         wrap_image: np.ndarray,
         dpi: int,
         wireframe: bool,
-        y_angle: float,  # rotation around vertical axis (symbols.TAU * 0.1)
-        x_shift: float,  # shift to one side (0.2 * canvas_width)
+        y_angle: float,         # rotation around vertical axis (symbols.TAU * 0.1)
         view_pos_scale: float,  # camera distance as multiple of trim_height (1.25)
         view_shift: float,      # larger number for less perspective (10.0)
         spine_shade: float      # shading factor for spine (0.8)
@@ -121,7 +125,7 @@ def cover_image_3d(
     ]) - cover_shift
 
     scale_factor = canvas_height / trim_height
-    view_pos = np.array([x_shift, 0.0, scale_factor * view_shift])  # 0 0 800
+    view_pos = np.array([0.0, 0.0, scale_factor * view_shift])  # 0 0 800
 
     # looking down at origin from a height of cover_height
     cam_z_pos = view_pos_scale * view_shift
