@@ -35,19 +35,42 @@ def test_wrap():
     width_max = 720
     border_xy = (16, 16)
     lines = multiline.wrap_text(message, font, width_max)
-    line_height = sum(blimp_text.getmetrics(font))
+    line_height = sum(blimp_text.getmetrics(font)) + blimp_text.getleading(font)
+    print()
+    print(line_height)
+
     height = line_height * len(lines)
-    color = (255, 0, 0)
+    color = (255, 0, 0, 255)
 
     # image
 
-    for justify_method in ["none", "standard", "trim"]:
-        wrap_im = multiline.multiline(
-            lines, font, color,
-            line_height,
-            (width_max, width_max),
-            border_xy,
-            justify_method)
+    for justify_method in ["none", "standard", "trim", "scala_none", "scala_standard"]:
+        if justify_method.startswith("scala_"):
+            wrap_im = multiline.multiline_scala(
+                [message], font, color,
+                # line_height,  # no control over this right now
+                (width_max, height),
+                border_xy,
+                justify_method == "scala_standard")
+        else:
+            wrap_im = multiline.multiline(
+                lines, font, color,
+                line_height,
+                (width_max, height),
+                border_xy,
+                justify_method)
+
+        assert wrap_im.shape == (
+            height + border_xy[0] * 2,
+            width_max + border_xy[1] * 2,
+            4)
+
+        assert set(np.unique(wrap_im[:, :, 0])) == {0, 255}
+        assert np.alltrue(wrap_im[:, :, 1] == 0)
+        assert np.alltrue(wrap_im[:, :, 2] == 0)
+        assert len(set(np.unique(wrap_im[:, :, 3]))) > 2
+        assert np.alltrue(wrap_im[:, :, 3] <= 255)
+
         _debug_save_image(Image.fromarray(wrap_im), ".", f"wrap_{justify_method}.png")
 
     # animation

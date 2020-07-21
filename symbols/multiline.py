@@ -12,7 +12,7 @@ from typing import List, Any, Callable, Tuple
 import numpy as np
 from PIL import Image
 
-from symbols import blimp_text, trim
+from symbols import blimp_text, trim, conversions
 
 
 def wrap_text(
@@ -211,8 +211,7 @@ def animate_characters(
     length_all = sum(line_lengths)
     # line_height = font_line_height(font)
     ascent, descent = blimp_text.getmetrics(font)
-    line_height = ascent + descent
-    # TODO: potentially add leading to line_height
+    line_height = ascent + descent + blimp_text.getleading(font)
     image_height = line_height * len(lines)
 
     idx_frame_out = 0
@@ -249,3 +248,26 @@ def animate_characters(
         im_mod = im_func(img)
         frame_func(im_mod)
         idx_frame_out = idx_frame_out + 1
+
+
+def multiline_scala(
+        paragraphs: List[str],
+        font: Any,
+        color: Tuple,
+        # line_height: int,  # currently no control over this
+        box_xy: Tuple[int, int],
+        border_xy: Tuple[int, int],
+        justify: bool) -> np.ndarray:
+    """draw muliline text with similar interface to multiline"""
+
+    im_text = blimp_text.text_scala.draw_multiline(
+        paragraphs=paragraphs,
+        font=blimp_text._font_to_tuple(font),
+        border_size=border_xy,
+        image_size=box_xy,
+        justify=justify)
+
+    im_text_alpha = im_text[:, :, 3]
+    im_text = conversions.colorize(im_text_alpha, color)
+
+    return im_text

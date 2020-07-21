@@ -7,7 +7,7 @@ Utilities for drawing text, using an external executable.
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
 import hashlib
-from typing import Tuple, Any, Dict, Union
+from typing import Tuple, Any, Dict, Union, List
 import os
 
 import cv2
@@ -35,7 +35,7 @@ def get_info(
         border_size: Tuple[int, int]) -> Dict:
     """draw text using external tool"""
 
-    print(f"info for '{text}'...", end="", flush=True)
+    # print(f"info for '{text}'...", end="", flush=True)
 
     id_object = (text, font, stroke_width, border_size)
     id_string = compute_hash(id_object)
@@ -47,12 +47,12 @@ def get_info(
         _write_config(
             config_filename,
             text, font, stroke_width, border_size)
-        command = _info_command(config_filename)
+        command = _draw_command(config_filename, "info", "single")
         os.system(command)
 
     info = _read_info(info_filename)
 
-    print("done")
+    # print("done")
 
     return info
 
@@ -74,7 +74,7 @@ def draw(
         _write_config(
             config_filename,
             text, font, stroke_width, border_size)
-        command = _draw_command(config_filename)
+        command = _draw_command(config_filename, "draw", "single")
         os.system(command)
 
     img = cv2.imread(image_filename, cv2.IMREAD_UNCHANGED)
@@ -83,6 +83,32 @@ def draw(
     info = _read_info(info_filename)
 
     return img, info
+
+
+def draw_multiline(
+        paragraphs: List[str],
+        font: Font,
+        border_size: Tuple[int, int],
+        image_size: Tuple[int, int],
+        justify: bool) -> np.array:
+    """draw text using external tool"""
+
+    id_object = (tuple(paragraphs), font, border_size, image_size, justify)
+    id_string = compute_hash(id_object)
+
+    image_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".png")
+    if not os.path.exists(image_filename):
+        config_filename = os.path.join(IMAGE_DIRNAME, "text_" + id_string + ".txt")
+        os.makedirs(IMAGE_DIRNAME, exist_ok=True)
+        _write_config_multiline(
+            config_filename,
+            paragraphs, font, border_size, image_size, justify)
+        command = _draw_command(config_filename, "draw", "multi")
+        os.system(command)
+
+    img = cv2.imread(image_filename, cv2.IMREAD_UNCHANGED)
+
+    return img
 
 
 def draw_on_image(
@@ -142,18 +168,11 @@ def compute_hash(val: Any) -> str:
     return hasher.hexdigest()
 
 
-def _info_command(config_filename: str) -> str:
+def _draw_command(config_filename: str, command: str, mode: str) -> str:
     """create the command to run the text executable"""
     jar_filename = os.path.join(BIN_DIRNAME, "secondary.jar")
     class_name = "bdzimmer.orbits.Text"
-    return f"java -cp {jar_filename} {class_name} {config_filename} info"
-
-
-def _draw_command(config_filename: str) -> str:
-    """create the command to run the text executable"""
-    jar_filename = os.path.join(BIN_DIRNAME, "secondary.jar")
-    class_name = "bdzimmer.orbits.Text"
-    return f"java -cp {jar_filename} {class_name} {config_filename} draw"
+    return f"java -cp {jar_filename} {class_name} {config_filename} {command} {mode}"
 
 
 def _write_config(
@@ -163,7 +182,7 @@ def _write_config(
         stroke_width: int,
         border_size: Tuple[int, int],
         ) -> None:
-    """write config file"""
+    """write config file for single line text"""
 
     with open(config_filename, "w") as config_file:
         config_file.write(text + "\n")
@@ -173,6 +192,29 @@ def _write_config(
         config_file.write(f"{border_x};{border_y}\n")
         if stroke_width > 0:
             config_file.write(f"{stroke_width}\n")
+
+
+def _write_config_multiline(
+        config_filenme: str,
+        paragraphs: List[str],
+        font: Font,
+        border_size: Tuple[int, int],
+        image_size: Tuple[int, int],
+        justify: bool
+        ) -> None:
+    """write config file for multiline text"""
+
+    with open(config_filenme, "w") as config_file:
+        name, style, size = font
+        config_file.write(f"{name};{style};{size}\n")
+        border_x, border_y = border_size
+        config_file.write(f"{border_x};{border_y}\n")
+        image_x, image_y = image_size
+        config_file.write(f"{image_x};{image_y}\n")
+        justify_string = "true" if justify else "false"
+        config_file.write(f"{justify_string}\n")
+        for paragraph in paragraphs:
+            config_file.write(paragraph + "\n")
 
 
 def _read_info(info_filename: str) -> Dict[str, Any]:

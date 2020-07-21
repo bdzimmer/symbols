@@ -106,10 +106,6 @@ def cover_image_3d(
         [0.0, trim_height, 0.0]
     ]) - cover_shift
 
-    print(info.cover_width, info.cover_height)
-    print((info.bleed_v_right - info.spine_v_right) / info.cover_width)
-    print((info.bleed_h_bottom - info.bleed_h_top) / info.cover_height)
-
     spine_points_2d = np.array([
         [info.spine_v_left, info.bleed_h_top],
         [info.spine_v_right, info.bleed_h_top],

@@ -517,33 +517,38 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
         leading = layer.get("leading", -1)
         justify_method = layer.get("justify_method", "none")
 
-        # if isinstance(font_filename, str):
-        #     font = load_font(font_filename, font_size)
-        # else:
-        #     font = load_font(font_filename[0], font_size), font_filename[1]
-
         font = load_font(font_filename, font_size)
 
-        ascent, descent = blimp_text.getmetrics(font)
-        line_height = ascent + descent
+        if justify_method == "scala_none" or justify_method == "scala_standard":
+            image = multiline.multiline_scala(
+                text, font, color,
+                # line_height,  # no control over this right now
+                (width, height),
+                (border_x, border_y),
+                justify_method == "scala_standard"
+            )
 
-        if leading == -1:
-            leading = blimp_text.getleading(font)
-
-        if leading > 0:
-            line_height = line_height + leading
-
-        if isinstance(text, list):
-            lines = [y for x in text for y in multiline.wrap_text(x, font, width)]
         else:
-            lines = multiline.wrap_text(text, font, width)
+            ascent, descent = blimp_text.getmetrics(font)
+            line_height = ascent + descent
 
-        image = multiline.multiline(
-            lines, font, color, line_height,
-            (width, height),
-            (border_x, border_y),
-            justify_method
-        )
+            if leading == -1:
+                leading = blimp_text.getleading(font)
+
+            if leading > 0:
+                line_height = line_height + leading
+
+            if isinstance(text, list):
+                lines = [y for x in text for y in multiline.wrap_text(x, font, width)]
+            else:
+                lines = multiline.wrap_text(text, font, width)
+
+            image = multiline.multiline(
+                lines, font, color, line_height,
+                (width, height),
+                (border_x, border_y),
+                justify_method
+            )
 
     elif layer_type == "concat":
         axis = layer["axis"]

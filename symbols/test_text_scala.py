@@ -60,6 +60,28 @@ def test_draw_on_image():
         debugutil.show_comparison(img_org, img, "draw_on_image")
 
 
+def test_draw_multiline():
+    """test draw_multiline"""
+
+    paragraphs = [
+        "  {b}Lorem {b}ipsum {i}dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        " ",
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+    ]
+
+    font = ("Play", "plain", 64)
+    img = text_scala.draw_multiline(
+        paragraphs,
+        font, (32, 32), (1920, 1080),
+        True)
+
+    assert img.shape == (1080 + 32 * 2, 1920 + 32 * 2, 4)
+
+    _debug_save_image(Image.fromarray(img), "text_scala_2.png")
+
+
 def _debug_save_image(img: Image, filename: str):
     """save an image"""
     if DEBUG:
