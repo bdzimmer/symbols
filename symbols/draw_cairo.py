@@ -69,6 +69,16 @@ def draw_polyline(context: cairo.Context, polyline: symbols.Polyline) -> None:
     context.stroke()
 
 
+def draw_dot(context: cairo.Context, dot: symbols.Dot) -> None:
+    """draw a filled circle"""
+    context.set_line_width(dot.thickness)
+    _set_color(context, dot.color)
+
+    context.arc(dot.center[0], dot.center[1], dot.radius, 0.0, 2.0 * np.pi)
+    context.stroke_preserve()
+    context.fill()
+
+
 def render(canvas: np.ndarray, primitives: List[symbols.Primitive]) -> None:
     """Render using pycairo"""
 
@@ -99,6 +109,8 @@ def draw(context: cairo.Context, prim: symbols.Primitive) -> None:
         draw_circle(context, prim)
     elif isinstance(prim, symbols.Polyline):
         draw_polyline(context, prim)
+    elif isinstance(prim, symbols.Dot):
+        draw_dot(context, prim)
 
 
 def create_surface(width: int, height: int) -> Tuple[cairo.ImageSurface, cairo.Context]:

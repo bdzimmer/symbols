@@ -16,7 +16,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 
-from symbols import blimp_text, multiline, trim
+from symbols import blimp_text, multiline, trim, conversions
 
 DEBUG = True
 DEBUG_DIRNAME = "scratch"
@@ -111,7 +111,7 @@ def main(argv):  # pragma: no cover
 def assemble_group(
         layers, canvas_width, canvas_height, resources_dirname, canvas_alpha,
         save_layer, save_total, project_dirname, prefix,
-        debug_guides):
+        debug_guides) -> np.ndarray:
 
     start_time = time.time()
 
@@ -393,10 +393,12 @@ def render_layer(layer: Dict[str, Any], resources_dirname: str) -> np.ndarray:
     border_x = layer.get("border_x", 0)
     border_y = layer.get("border_y", 0)
 
-    if layer_type == "image":
-        filename = layer["filename"]
-        print(resources_dirname)
+    if layer_type == "bitmap":
+        # for programmatic use
+        image = layer["bitmap"]
 
+    elif layer_type == "image":
+        filename = layer["filename"]
         image = load_image(os.path.join(resources_dirname, filename))
         image = np.copy(image)
 
@@ -709,6 +711,10 @@ def apply_effect(image: np.ndarray, effect: Dict, resources_dirname: str) -> np.
         # TODO: add better resize method here
         image = cv2.resize(
             image, (int(x_scale * image.shape[1]), int(y_scale * image.shape[0])))
+
+    elif effect_type == "colorize":
+        color = effect["color"]
+        image = conversions.colorize(image[:, :, 3], color)
 
     else:
         print("\tunrecognized effect type '" + str(effect_type) + "'")
