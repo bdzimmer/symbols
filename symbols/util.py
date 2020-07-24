@@ -55,8 +55,9 @@ class Profiler:
     def summary(self):
         """pretty-print results"""
         times = [(x, y) for x, (_, y) in self.times.items()]
+        key_len_max = max(len(x) for x in self.times.keys())
         for key, dur in times:
-            print(key.ljust(20, "."), round(dur, 3))
+            print(key.ljust(key_len_max + 4, ".") + str(round(dur, 3)))
 
 
 def ffmpeg_command(images_dirname, output_filename, width, height, fps):
