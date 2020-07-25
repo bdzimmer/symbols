@@ -194,7 +194,8 @@ def ethereal_color_func(age, alpha):
     return (
         int(255 * age),
         int(255 * age * age),
-        0,
+        0,  # Red was originally zero.
+        # int(32 * age * age),
         alpha * age * age  # 255
     )
 

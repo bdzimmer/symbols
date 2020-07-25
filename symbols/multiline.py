@@ -196,7 +196,7 @@ def animate_characters(
         color: Tuple,
         width_max: int,
         border_xy: Tuple[int, int],
-        justify: bool,
+        justify_method: str,
         im_func: Callable,     # function to update the image before writing to disk
         frame_func: Callable,  # function to write frame to disk
         dup: int,              # frames per character
@@ -237,7 +237,7 @@ def animate_characters(
 
         # TODO: test a case where one word is too long
         img = multiline(
-            lines_mod, font, color, line_height, (width_max, image_height), border_xy, justify)
+            lines_mod, font, color, line_height, (width_max, image_height), border_xy, justify_method)
 
         for _ in range(dup):
             im_mod = im_func(img)
