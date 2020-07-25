@@ -9,7 +9,7 @@ Hopf fibration functions.
 import cv2
 import numpy as np
 
-from symbols import transforms
+from symbols import transforms, composite as comp
 
 
 def total_points(base_point, fiber_points):
@@ -278,10 +278,6 @@ def draw_segments(canvas, pts_0, pts_1, colors, line_width):
         pt_0 = tuple(pts_0[:, line_idx])
         pt_1 = tuple(pts_1[:, line_idx])
 
-        print(pt_0, pt_1, color, line_width)
-
-        # print(pt_0, "->", pt_1)
-        # if True:  # color != (0.0, 0.0, 0.0):  # a proxy for backface culling
         cv2.line(
             canvas,
             pt_0,
@@ -298,7 +294,6 @@ def draw_segments_transparent(
 
     if composite:
         canvas_comp = canvas
-        # canvas_draw = np.zeros(canvas.shape, dtype=np.uint8)
     else:
         canvas_draw = canvas
 
@@ -314,7 +309,7 @@ def draw_segments_transparent(
             pt_1,
             color,
             line_width,
-            cv2.LINE_AA)
+            cv2.LINE_AA)  # TODO: to do this properly, the line should be "colorized"
 
         if composite:
             x_0 = int(pt_0[0])
@@ -329,30 +324,21 @@ def draw_segments_transparent(
 
             src_chunk = canvas_draw[y_l:y_r, x_l:x_r, :]
             dst_chunk = canvas_comp[y_l:y_r, x_l:x_r, :]
-            src_rgb = src_chunk[:, :, 0:3]
-            dst_rgb = dst_chunk[:, :, 0:3]
-            src_a = src_chunk[:, :, 3:4] / 255.0
-            dst_a = dst_chunk[:, :, 3:4] / 255.0
 
-            out_a = src_a + dst_a * (1.0 - src_a)
-            out_rgb = src_rgb * src_a + dst_rgb * dst_a * (1.0 - src_a)
-            out_rgb[out_a[:, :, 0] > 0.0] = (out_rgb / out_a)[out_a[:, :, 0] > 0.0]
-            out_rgb[out_a[:, :, 0] == 0.0] = 0.0
-
-            canvas_comp[y_l:y_r, x_l:x_r, 0:3] = np.array(out_rgb, dtype=np.uint8)
-            canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
+            canvas_comp[y_l:y_r, x_l:x_r, :] = comp.alpha_blend(src_chunk, dst_chunk)
 
             # clear scratch
             canvas_draw[y_l:y_r, x_l:x_r, :] = 0
 
 
-# TODO: refactor and fix
-def draw_segment_transparent(
+def draw_segment_glow(
         pt_0, pt_1, color, line_width,
         composite,
         canvas_comp,   # canvas being drawn onto
         canvas_draw,   # temp canvas
         erase):
+
+    """draw a segment with a glow around it"""
 
     blur_size = 31
 
@@ -377,7 +363,7 @@ def draw_segment_transparent(
         pt_1,
         color,
         line_width,
-        # cv2.LINE_AA
+        # cv2.LINE_AA  # antialising probably pollutes colors
     )
 
     if composite:
@@ -399,6 +385,8 @@ def draw_segment_transparent(
         if blur_size > 0:
             blurred = cv2.GaussianBlur(
                 src_chunk, (blur_size, blur_size), 0)
+            # blurred = src_chunk
+
             if blurred is not None:
                 # use only the blur
                 # src_chunk = blurred
@@ -414,26 +402,17 @@ def draw_segment_transparent(
                 # src_chunk = np.maximum(blurred, src_chunk)
 
         dst_chunk = canvas_comp[y_l:y_r, x_l:x_r, :]
-        src_rgb = src_chunk[:, :, 0:3]
-        dst_rgb = dst_chunk[:, :, 0:3]
-        src_a = src_chunk[:, :, 3:4] / 255.0
-        dst_a = dst_chunk[:, :, 3:4] / 255.0
 
         if True:
-            # alpha compositing
-            out_a = src_a + dst_a * (1.0 - src_a)
-            out_rgb = src_rgb * src_a + dst_rgb * dst_a * (1.0 - src_a)
-            out_rgb[out_a[:, :, 0] > 0.0] = (out_rgb / out_a)[out_a[:, :, 0] > 0.0]
-            out_rgb[out_a[:, :, 0] == 0.0] = 0.0
+            canvas_comp[y_l:y_r, x_l:x_r, :] = comp.alpha_blend(src_chunk, dst_chunk)
         else:
-            # additive compositing
-            out_a = np.clip(src_a + dst_a, 0.0, 1.0)
-            out_rgb = np.clip((src_rgb * src_a + dst_rgb * dst_a) / out_a, 0.0, 255.0)
-
-        canvas_comp[y_l:y_r, x_l:x_r, 0:3] = np.array(out_rgb, dtype=np.uint8)
-        canvas_comp[y_l:y_r, x_l:x_r, 3] = np.array(out_a[:, :, 0] * 255, dtype=np.uint8)
+            canvas_comp[y_l:y_r, x_l:x_r, :] = comp.additive_blend(src_chunk, dst_chunk)
 
         # clear scratch
+        # This ends up being equivalent to simply creating a new, segment-sized image
+        # for each invocation. Might be faster though, if this function is being
+        # invoked to draw actual segments and not the same point over and over again, since
+        # we avoid a ton of memory allocations.
         if erase:
             canvas_draw[y_l:y_r, x_l:x_r, :] = 0
 
