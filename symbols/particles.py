@@ -125,6 +125,14 @@ def draw_texture(
     """draw a particle texture onto a canvas with a compositing function"""
 
     canvas_dim = (canvas.shape[1], canvas.shape[0])
+
+    if (
+            pt_xy[0] < -texture.shape[1] or
+            pt_xy[0] > canvas.shape[1] or
+            pt_xy[1] < -texture.shape[0] or
+            pt_xy[1] > canvas.shape[0]):
+        return
+
     texture, (pt_x, pt_y) = trim.trim(texture, pt_xy, canvas_dim)
 
     # print(
