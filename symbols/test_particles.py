@@ -40,7 +40,8 @@ def test_gaussian():
     np.random.seed(1)
     p_xys = np.random.randn(n_particles, 2)
     p_xys = p_xys * np.array([canvas_x * 0.1, canvas_y * 0.1])[np.newaxis, :]
-    p_xys = p_xys + np.array([canvas_x * 0.5, canvas_y * 0.5])[np.newaxis, :]
+    canvas_center = np.array([canvas_x * 0.5, canvas_y * 0.5])
+    p_xys = p_xys + canvas_center[np.newaxis, :]
     p_xys = np.array(p_xys, np.int)
 
     # build particle cache / drawing function
@@ -70,11 +71,16 @@ def test_gaussian():
             if (idx % 1000) == 0:
                 print("\t", idx + 1, "/", p_xys.shape[0])
             p_xy = p_xys[idx, :]
-            exp_particle_draw(p_xy, particle_size, particle_color, blend_func)
+            age = 1.0 - np.linalg.norm(p_xy - canvas_center) / canvas_y
+            age = round(age * 100.0) / 100.0
+            color = _color_func(age, 255)
+            exp_particle_draw(p_xy, particle_size, color, blend_func)
 
         # TODO: assertions
 
         _debug_save_image(Image.fromarray(canvas), f"particles_{blend_method_name}.png")
+
+    print("texture cache size:", len(tex_cache))
 
 
 def test_blend():
@@ -116,6 +122,17 @@ def test_blend():
 
         # TODO: assertions
         _debug_save_image(Image.fromarray(canvas), f"dots_{blend_method_name}.png")
+
+
+def _color_func(age, alpha):
+    """default color function"""
+    age = max(min(age, 1.0), 0.0)
+    return (
+        int(32 * age * age),  # nonzero red allows saturation to white
+        int(255 * age * age),
+        int(255 * age),
+        alpha * age * age  # 255
+    )
 
 
 def _dot_image(diameter: float, color: Tuple) -> np.ndarray:

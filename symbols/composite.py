@@ -19,8 +19,10 @@ def alpha_blend(src: np.ndarray, dst: np.ndarray) -> np.ndarray:
 
     out_a = src_a + dst_a * (1.0 - src_a)
     out_rgb = src_rgb * src_a + dst_rgb * dst_a * (1.0 - src_a)
-    out_rgb[out_a[:, :, 0] > 0.0] = (out_rgb / out_a)[out_a[:, :, 0] > 0.0]
-    out_rgb[out_a[:, :, 0] == 0.0] = 0.0
+
+    is_zero = out_a[:, :, 0] == 0.0
+    out_rgb[~is_zero] = out_rgb[~is_zero] / out_a[~is_zero]
+    out_rgb[is_zero] = 0.0
 
     res = np.concatenate(
         (np.array(out_rgb, dtype=np.uint8),
@@ -39,7 +41,14 @@ def additive_blend(src: np.ndarray, dst: np.ndarray) -> np.ndarray:
     dst_a = dst[:, :, 3:4] / 255.0
 
     out_a = np.clip(src_a + dst_a, 0.0, 1.0)
-    out_rgb = np.clip((src_rgb * src_a + dst_rgb * dst_a) / out_a, 0.0, 255.0)
+
+    # this doesn't work when out_a == 0.0
+    # out_rgb = np.clip((src_rgb * src_a + dst_rgb * dst_a) / out_a, 0.0, 255.0)
+
+    out_rgb = src_rgb * src_a + dst_rgb * dst_a
+    is_zero = out_a[:, :, 0] == 0.0
+    out_rgb[~is_zero] = np.clip(out_rgb[~is_zero] / out_a[~is_zero], 0.0, 255.0)
+    out_rgb[is_zero] = 0.0
 
     res = np.concatenate(
         (np.array(out_rgb, dtype=np.uint8),
