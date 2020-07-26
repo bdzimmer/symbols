@@ -1,239 +1,75 @@
 """
-Imtegration tests for compositing functionality.
+Tests for compositing methods.
 """
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
 import os
-import sys
+from typing import Tuple
 
-import cv2
 import numpy as np
+from PIL import Image
 
-from symbols import blimp, blimp_util, blimp_text
+from symbols import composite
+from symbols import draw_cairo, symbols, transforms
+from symbols import debugutil
 
-# reused stuff
-RESOURCES_DIRNAME = [
-    "C:/Ben/Google Drive/art",
-    "/home/ben/Google Drive/art"][1]
 
 DEBUG = True
-
-FORCE_CUSTOM_KERNING = True
-USE_PIL = False
-TRIM_X = False
-
-CANVAS_WIDTH = 3000
-CANVAS_HEIGHT = 500
-
 SCRATCH_DIRNAME = os.path.join("test_scratch", "composite")
 
 
-def test_text():
-    """Test various text use cases."""
+def test_blend():
+    """test blending functions"""
 
-    blimp_text.USE_PIL = USE_PIL
+    canvas_x = 1280
+    canvas_y = 1280
+    center = (canvas_x // 2, canvas_y // 2)
 
-    if DEBUG:
-        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-
-    bg_filename = os.path.join(
-        RESOURCES_DIRNAME,
-        "unsplash",
-        "bonnie-kittle-aQnyyf-4uZQ-unsplash.jpg")
-
-    im_bg = cv2.imread(bg_filename)
-    if im_bg is None:
-        print("background image not found")
-        sys.exit()
-
-    im_bg = blimp.add_alpha(im_bg)
-    im_bg = im_bg[0:CANVAS_HEIGHT, 0:CANVAS_WIDTH, :]
-
-    # ~~~~
-
-    print()
-    print("~~~~ example 0: plain old text, no stroke")
-
-    layer_text = {
-        "type": "text",
-        "text": "PROVIDENCE",
-        "font": "Orbitron-Bold.ttf",
-        "size": 350,
-        "color": (0, 0, 0),
-        "force_custom_kerning": FORCE_CUSTOM_KERNING,
-        "x": 64,
-        "y": 64,
-        "trim_x": TRIM_X
+    blend_funcs = {
+        "alpha": composite.alpha_blend,
+        "additive": composite.additive_blend
     }
 
-    im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
+    triangle_points = [
+        symbols.add(x, center)
+        for x in transforms.points_around_circle(3, symbols.TAU * 0.25, 200)]
 
-    assert len(im_comp.shape) == 3
-    assert im_comp.dtype == np.ubyte
-    assert len(im_text.shape) == 3
-    assert im_text.dtype == np.ubyte
-    assert im_comp.shape == (CANVAS_HEIGHT, CANVAS_WIDTH, 4)
+    alpha = 128
+    dots = [
+        _dot_image(800, x)
+        for x in [(255, 0, 0, alpha), (0, 255, 0, alpha), (0, 0, 255, alpha)]]
 
-    if DEBUG:
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_0.png"), im_text)
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_0.png"), im_comp)
+    for blend_method_name in ["alpha", "additive"]:
+        canvas = np.zeros((canvas_y, canvas_x, 4), dtype=np.uint8)
+        # canvas[:, :, 0:4] = (64, 64, 64, 255)
+        blend_func = blend_funcs[blend_method_name]
+        for tri_pt, dot in zip(triangle_points, dots):
+            c_x, c_y = symbols.add((int(tri_pt[0]), int(tri_pt[1])), (-400, -400))
+            res = blend_func(dot, canvas[c_y:(c_y + 800), c_x:(c_x + 800), :])
 
-    # ~~~~
+            print(
+                blend_method_name, "\n",
+                "\tdot:", np.min(dot[:, :, 3]), np.max(dot[:, :, 3]), "\n",
+                "\tdst rgb:", np.min(canvas[c_y:(c_y + 800), c_x:(c_x + 800), 0:3]),
+                np.max(canvas[c_y:(c_y + 800), c_x:(c_x + 800), 0:3]), "\n",
+                "\tdst a:", np.min(canvas[c_y:(c_y + 800), c_x:(c_x + 800), 3]),
+                np.max(canvas[c_y:(c_y + 800), c_x:(c_x + 800), 3]), "\n",
+                "\tres a:", np.min(res[:, :, 3]), np.max(res[:, :, 3]))
 
-    print()
-    print("~~~~ example 1: two layers of stroke")
-    # (for verifying that stroke lines up with text)
+            canvas[c_y:(c_y + 800), c_x:(c_x + 800), :] = res
 
-    layers_text = [
-        {
-            "type": "text",
-            "text": "PROVIDENCE",
-            "font": "Orbitron-Bold.ttf",
-            "size": 350,
-            "color": (0, 0, 0),  # experiment with and without transparency!
-            "force_custom_kerning": FORCE_CUSTOM_KERNING,
-            # "stroke_width": 3,
-            "x": 64,
-            "y": 64,
-            "trim_x": TRIM_X
-        },
-        {
-            "type": "text",
-            "text": "PROVIDENCE",
-            "font": "Orbitron-Bold.ttf",
-            "size": 350,
-            "color": (255, 255, 255, 128),  # experiment with and without transparency!
-            "force_custom_kerning": FORCE_CUSTOM_KERNING,
-            "stroke_width": 16,
-            "x": 64,
-            "y": 64,
-            "trim_x": TRIM_X,
-            "border_x": 64
-        }
-    ]
+        # TODO: assertions
 
-    im_text, im_comp = blimp_util.render_and_composite(layers_text, RESOURCES_DIRNAME, im_bg)
+        debugutil.save_image(
+            Image.fromarray(canvas), SCRATCH_DIRNAME, f"dots_{blend_method_name}.png")
 
-    if DEBUG:
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_1.png"), im_text)
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_1.png"), im_comp)
 
-    # ~~~~
-
-    print()
-    print("~~~~ example 2: text with double-sided glow")
-
-    # Also note, due to the way that borders are handled, these layers should line
-    # up automatically no matter which size stroke is defined on each.
-    # Not sure how borders factor in.
-
-    layers_text = [
-        {
-            "type": "text",
-            "text": "PROVIDENCE",
-            "font": "Orbitron-Bold.ttf",
-            "size": 350,
-            "color": (40, 40, 40),  # alpha 255
-            "force_custom_kerning": FORCE_CUSTOM_KERNING,
-            "x": 64,
-            "y": 64,
-            "trim_x": TRIM_X,
-            "border_x": 32,
-            "border_y": 32
-        },
-        {
-            "type": "text",
-            "text": "PROVIDENCE",
-            "font": "Orbitron-Bold.ttf",
-            "size": 350,
-            "color": (255, 0, 255),  # alpha 255
-            "stroke_width": 4,
-            "force_custom_kerning": FORCE_CUSTOM_KERNING,
-            "x": 64,
-            "y": 64,
-            "trim_x": TRIM_X,
-            "border_x": 32,
-            "border_y": 32,
-            "effects": [
-                {
-                    "type": "glow",
-                    "dilate": 4,
-                    "blur": 63,
-                    "color": (255, 0, 255)
-                }
-            ],
-            # This should work...why doesn't it?
-            # "mask":  {
-            #     "type": "text",
-            #     "text": "PROVIDENCE",
-            #     "font": "Orbitron-Bold.ttf",
-            #     "size": 350,
-            #     "color": (255, 255, 255),  # alpha 255
-            #     "force_custom_kerning": FORCE_CUSTOM_KERNING,
-            #     "x": 64,
-            #     "y": 64,
-            #     "trim_x": False,
-            #     "border_x": 32,
-            #     "border_y": 32
-            # }
-        }
-    ]
-
-    im_black = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH, 4), dtype=np.uint8)
-    im_black[:, :, 3] = 255
-    im_text, im_comp = blimp_util.render_and_composite(layers_text, RESOURCES_DIRNAME, im_black)
-
-    if DEBUG:
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_2.png"), im_text)
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_2.png"), im_comp)
-
-    # ~~~~
-
-    print()
-    print("~~~~ example 3: masked text with outer shadow")
-
-    # Note that because the glow is greated from edge detection on the masked
-    # image, it's uneven due to the texture. To get an even glow, need another
-    # layer. See the other examples.
-
-    layer_text = {
-        "type": "text",
-        "text": "PROVIDENCE",
-        "font": "Orbitron-Bold.ttf",
-        "size": 350,
-        # when masking, the text color should not matter and not show
-        "color": (0, 0, 255),  # 255 alpha;
-        "force_custom_kerning": FORCE_CUSTOM_KERNING,
-        "x": 64,
-        "y": 64,
-        "trim_x": TRIM_X,
-        "border_x": 32,
-        "border_y": 32,
-        "effects": [
-            {
-                "type": "mask_onto",
-                "layer": {
-                    "type": "image",
-                    "filename": "unsplash/austin-templeton-TWMnY0rtvoo-unsplash.jpg"
-                }
-            },
-            {
-                "type": "glow",
-                "dilate": 4,
-                "blur": 31,
-                "only": False
-            }
-        ]
-    }
-
-    im_text, im_comp = blimp_util.render_and_composite([layer_text], RESOURCES_DIRNAME, im_bg)
-
-    if DEBUG:
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "text_3.png"), im_text)
-        cv2.imwrite(os.path.join(SCRATCH_DIRNAME, "comp_3.png"), im_comp)
-
-    # ~~~~ example 4: text with inner glow
-
-    # I thought this would be straightforward with mask / mask_onto,
-    # but I was wrong. A project for another time.
+def _dot_image(diameter: float, color: Tuple) -> np.ndarray:
+    """get an image of a dot"""
+    surface, context = draw_cairo.create_surface(diameter, diameter)
+    draw_cairo.draw_dot(
+        context,
+        symbols.Dot((diameter / 2, diameter / 2), diameter / 2, 0, 0, color))
+    dot_image = draw_cairo.surface_to_image(surface)
+    return np.array(dot_image)

@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from symbols import blimp, multiline, text_scala, util, blimp_text
+from symbols import debugutil
 
 DEBUG = True
 SCRATCH_DIRNAME = os.path.join("test_scratch", "text")
@@ -71,7 +72,7 @@ def test_wrap():
         assert len(set(np.unique(wrap_im[:, :, 3]))) > 2
         assert np.alltrue(wrap_im[:, :, 3] <= 255)
 
-        _debug_save_image(Image.fromarray(wrap_im), ".", f"wrap_{justify_method}.png")
+        debugutil.save_image(Image.fromarray(wrap_im), ".", f"wrap_{justify_method}.png")
 
     # animation
 
@@ -197,18 +198,10 @@ def test_alignment():
             img = Image.new("RGBA", (480, 320), (0, 0, 0, 0))
             _ = _draw_text_with_info(
                 img, text_cur, start_x, start_y, draw_func)
-            _debug_save_image(img, "align", f"align_{idx}_{draw_method}.png")
+            debugutil.save_image(
+                img, os.path.join(SCRATCH_DIRNAME, "align"), f"align_{idx}_{draw_method}.png")
 
-        _debug_save_image(im_bg, ".", f"align_all_{draw_method}.png")
-
-
-def _debug_save_image(img: Image, subdirname: str, filename: str):
-    """save an image"""
-    if DEBUG:
-        scratch_dirname = os.path.join(SCRATCH_DIRNAME, subdirname)
-        os.makedirs(scratch_dirname, exist_ok=True)
-        output_filename = os.path.join(scratch_dirname, filename)
-        img.save(output_filename)
+        debugutil.save_image(im_bg, SCRATCH_DIRNAME, f"align_all_{draw_method}.png")
 
 
 def _draw_text_with_info(

@@ -6,6 +6,7 @@ Utilities for debugging.
 
 # Copryight (c) 2020 Ben Zimmer. All rights reserved.
 
+import os
 
 import cv2
 import numpy as np
@@ -98,3 +99,11 @@ def flatten_alpha(img: np.ndarray) -> np.ndarray:
 
     # return numpy array version
     return np.array(im_flat)
+
+
+def save_image(img: Image, scratch_dirname: str, filename: str) -> None:
+    """save an image"""
+    os.makedirs(scratch_dirname, exist_ok=True)
+    output_filename = os.path.join(scratch_dirname, filename)
+    print(output_filename)
+    img.save(output_filename)

@@ -175,18 +175,10 @@ def test_text_border():
 
         method_str = "scala" if not use_pil else "pil"
 
-        _debug_save_image(im_res, f"{method_str}_standard.png")
-        _debug_save_image(im_res_expanded, f"{method_str}_standard_expanded.png")
-        _debug_save_image(im_res_border, f"{method_str}_standard_border.png")
+        debugutil.save_image(im_res, SCRATCH_DIRNAME, f"{method_str}_standard.png")
+        debugutil.save_image(im_res_expanded, SCRATCH_DIRNAME, f"{method_str}_standard_expanded.png")
+        debugutil.save_image(im_res_border, SCRATCH_DIRNAME, f"{method_str}_standard_border.png")
 
-        _debug_save_image(im_custom, f"{method_str}_custom.png")
-        _debug_save_image(im_custom_expanded, f"{method_str}_custom_expanded.png")
-        _debug_save_image(im_custom_border, f"{method_str}_custom_border.png")
-
-
-def _debug_save_image(img: Image, filename: str):
-    """save an image"""
-    if DEBUG:
-        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
-        img.save(output_filename)
+        debugutil.save_image(im_custom, SCRATCH_DIRNAME, f"{method_str}_custom.png")
+        debugutil.save_image(im_custom_expanded, SCRATCH_DIRNAME, f"{method_str}_custom_expanded.png")
+        debugutil.save_image(im_custom_border, SCRATCH_DIRNAME, f"{method_str}_custom_border.png")

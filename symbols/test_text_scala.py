@@ -32,7 +32,7 @@ def test_draw():
 
     assert img.shape == (151, 299, 4)
 
-    _debug_save_image(Image.fromarray(img), "text_scala_0.png")
+    debugutil.save_image(Image.fromarray(img), SCRATCH_DIRNAME, "text_scala_0.png")
 
     if DEBUG_VISUALIZE:
         debugutil.show(img, "draw")
@@ -54,7 +54,7 @@ def test_draw_on_image():
     assert info["borderY"] == 32
     assert info["stroke"] == 1.0
 
-    _debug_save_image(img, "text_scala_1.png")
+    debugutil.save_image(img, SCRATCH_DIRNAME, "text_scala_1.png")
 
     if DEBUG_VISUALIZE:
         debugutil.show_comparison(img_org, img, "draw_on_image")
@@ -79,12 +79,5 @@ def test_draw_multiline():
 
     assert img.shape == (1080 + 32 * 2, 1920 + 32 * 2, 4)
 
-    _debug_save_image(Image.fromarray(img), "text_scala_2.png")
+    debugutil.save_image(Image.fromarray(img), SCRATCH_DIRNAME, "text_scala_2.png")
 
-
-def _debug_save_image(img: Image, filename: str):
-    """save an image"""
-    if DEBUG:
-        os.makedirs(SCRATCH_DIRNAME, exist_ok=True)
-        output_filename = os.path.join(SCRATCH_DIRNAME, filename)
-        img.save(output_filename)
