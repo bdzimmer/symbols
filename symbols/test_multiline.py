@@ -72,7 +72,7 @@ def test_wrap():
         assert len(set(np.unique(wrap_im[:, :, 3]))) > 2
         assert np.alltrue(wrap_im[:, :, 3] <= 255)
 
-        debugutil.save_image(Image.fromarray(wrap_im), ".", f"wrap_{justify_method}.png")
+        debugutil.save_image(Image.fromarray(wrap_im), SCRATCH_DIRNAME, f"wrap_{justify_method}.png")
 
     # animation
 
