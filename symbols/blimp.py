@@ -716,6 +716,13 @@ def apply_effect(image: np.ndarray, effect: Dict, resources_dirname: str) -> np.
         color = effect["color"]
         image = conversions.colorize(image[:, :, 3], color)
 
+    elif effect_type == "multiply_rgb":
+        scale = effect["scale"]
+        # scale only the RGB part!
+        image = np.concatenate(
+            (np.array(np.clip(image[:, :, 0:3] * scale, 0.0, 255.0), dtype=np.ubyte),
+             image[:, :, 3:4]), axis=2)
+
     else:
         print("\tunrecognized effect type '" + str(effect_type) + "'")
 
