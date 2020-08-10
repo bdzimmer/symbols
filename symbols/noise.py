@@ -114,14 +114,14 @@ def draw_frame(
 
 def noise_geom(
         canvas,
-        p_poss,     # list of particle positions at each timestep
+        p_poss,     # for each timestep, a list of particle positions and ages
         actives,    # list of which particles are active at each timestep
         cam_trans,  # camera transform
         view_pos,   # view position
         ):
 
     """
-    Draw a single frame of particles on a canvas image, modifying it in-place.
+    Find coordinates, depths, and ages of particles for drawing.
     """
 
     height, width, _ = canvas.shape
@@ -138,13 +138,13 @@ def noise_geom(
         p_pos_c = transforms.transform(cam_trans, np.transpose(p_pos))
         p_pos_p = transforms.perspective(p_pos_c, view_pos)
         # align and convert to int
-        # TODO: flip y properly
+        # flip y properly
         p_pos_p[1, :] = 0.0 - p_pos_p[1, :]
-        p_pos_p = np.clip(np.array(p_pos_p + p_shift), -width * 2, height * 2)
+        p_pos_p = np.clip(np.array(p_pos_p + p_shift), -width * 2, height * 2)  # TODO: review this clip
         p_pos_p = np.array(p_pos_p, dtype=np.int)
         p_pos_p = np.transpose(p_pos_p)
 
-        # TODO: build a list of particles to render, with depths
+        # build a list of particles to render, with depths
         p_pos_ps.append((p_pos_p, p_pos_c[2, :]))  # smaller z is farther away
 
     # ~~~~ ~~~~ ~~~~ ~~~~
@@ -153,15 +153,25 @@ def noise_geom(
 
     coords = np.concatenate([x[0] for x in p_pos_ps], axis=0)
     depths = np.concatenate([x[1] for x in p_pos_ps], axis=0)
+
+    # the current age value of each particle in the current frame,
+    # tiled for each past frame (so we can compare current age to previous ages)
+    # seems like this could cause some issues when particles are recycled
     actives_head = np.concatenate([p_poss[-1][1] for _ in range(len(p_poss))], axis=0)
-    age_tail = actives        # age at current tail position?
+
+    # TODO: I believe this needs to be updated to handle particles being reused
+    # it should replace particle ages before the most recent -1 with -1
+    age_tail = actives        # age of particles across all frames
+
     age_head = actives_head   # age at head in current frame?
 
     return coords, depths, age_tail, age_head
 
 
 def draw(
-        coords, age_tail, age_head,
+        coords,
+        age_tail,
+        age_head,
 
         max_life,
         trail_length,
@@ -170,18 +180,28 @@ def draw(
         color_func,   # color given 0.0-1.0 age value
         canvas_draw,  # function for drawing on canvas
 
-    ):
+        age_mode,   # flame or starburst
+
+        ):
 
     """draw a bunch of particles"""
 
     for p_idx in range(coords.shape[0]):
 
-        p_age_tail = age_tail[p_idx]
-        p_age_head = age_head[p_idx]
+        p_age_tail = age_tail[p_idx]  # age of trail particle
+        p_age_head = age_head[p_idx]  # age of head particle
+
+        # print("age tail and head:", p_age_tail, p_age_head)
 
         if -1 < p_age_tail <= max_life and p_age_head > -1:
-            age_diff = p_age_head - p_age_tail  # age difference between head and tail
-            color_scale = max(trail_length - age_diff, 0) / trail_length
+
+            if age_mode == "flame":
+                age_diff = p_age_head - p_age_tail  # age difference between head and tail
+                color_scale = max(trail_length - age_diff, 0) / trail_length
+            else:
+                # TODO: do I need to clip? I don't think so.
+                color_scale = p_age_tail / max_life
+
             color = color_func(color_scale)
             x, y = coords[p_idx, :]
             canvas_draw((x, y), particle_size, color)
