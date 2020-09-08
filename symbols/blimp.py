@@ -710,7 +710,11 @@ def apply_effect(image: np.ndarray, effect: Dict, resources_dirname: str) -> np.
         y_scale = effect.get("y", 1.0)
         # TODO: add better resize method here
         image = cv2.resize(
-            image, (int(x_scale * image.shape[1]), int(y_scale * image.shape[0])))
+            image,
+            (int(x_scale * image.shape[1]), int(y_scale * image.shape[0])),
+            interpolation=cv2.INTER_LINEAR  # default
+            # interpolation=cv2.INTER_CUBIC
+        )
 
     elif effect_type == "colorize":
         color = effect["color"]

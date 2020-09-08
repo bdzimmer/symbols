@@ -25,8 +25,9 @@ def composite_image(
         wrap_image: np.ndarray,
         ebook_cover_image: np.ndarray,
         dpi: int,
-        shift_xy: Tuple[int, int]
-        ) -> np.ndarray:
+        shift_xy: Tuple[int, int],
+        bg_multiply: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
     """a higher-level function for making an artsy cover composite image"""
 
     # includes lots of defaults for cover_image_3d
@@ -49,10 +50,10 @@ def composite_image(
     cover_img = cover_img[:, trim_x[0]:trim_x[1], :]
     cover_img = cover_img[trim_y[0]:trim_y[1], :]
 
-    cover_img, shift_xy = trim.trim(
+    cover_img_trimmed, shift_xy = trim.trim(
         cover_img, shift_xy, canvas_size)
 
-    cover_img_pil = Image.fromarray(cover_img)
+    cover_img_pil = Image.fromarray(cover_img_trimmed)
     img_bg, _ = trim.trim(
         ebook_cover_image,
         (int(0.5 * (canvas_size[0] - ebook_cover_image.shape[1])),
@@ -60,12 +61,12 @@ def composite_image(
         canvas_size)
 
     img_bg = img_bg[:, :, 0:3]
-    img_bg = np.array(img_bg * 0.4, dtype=np.ubyte)
+    img_bg = np.array(img_bg * bg_multiply, dtype=np.ubyte)
     img_bg = blimp.add_alpha(img_bg)
     img_bg_pil = Image.fromarray(img_bg)
     img_bg_pil.alpha_composite(cover_img_pil, shift_xy)
 
-    return np.array(img_bg_pil)
+    return np.array(img_bg_pil), cover_img
 
 
 def cover_image_3d(
