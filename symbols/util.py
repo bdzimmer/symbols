@@ -8,8 +8,10 @@ Utilities.
 
 
 from collections import OrderedDict
+import os
 import time
 
+import cv2
 from trimesh import transformations
 import numpy as np
 
@@ -68,3 +70,27 @@ def ffmpeg_command(images_dirname, output_filename, width, height, fps):
         " -i " + images_dirname + "/%05d.png " +
         "-threads 2 -vcodec libx264 -crf 25 -pix_fmt yuv420p " + output_filename)
     return command
+
+
+def build_frame_writer(output_dirname, prof):
+    """frame writer"""
+
+    idx = [0]
+
+    def write(img: np.ndarray):
+        """write and increment counter"""
+        if prof is not None:
+            prof.tick("write")
+
+        if img.shape[2] == 3:
+            swizzled = img[:, :, [2, 1, 0]]
+        else:
+            swizzled = img[:, :, [2, 1, 0, 3]]
+        cv2.imwrite(
+            os.path.join(output_dirname, str(idx[0]).rjust(5, "0") + ".png"),
+            swizzled)
+        idx[0] = idx[0] + 1
+        if prof is not None:
+            prof.tock("write")
+
+    return write

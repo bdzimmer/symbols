@@ -4,7 +4,7 @@ S Y M B O L S
 
 # Copyright (c) 2020 Ben Zimmer. All rights reserved.
 
-from typing import Tuple, List
+from typing import Tuple, List, TypeVar
 import math
 
 import attr
@@ -19,6 +19,9 @@ class Primitive:
     thickness = attr.ib()
     depth = attr.ib()
     color = attr.ib()
+
+
+P = TypeVar("P", bound=Primitive, covariant=True)
 
 
 @attr.s(frozen=True)
@@ -130,6 +133,11 @@ def scale(pnt, frac):
     return pnt[0] * frac, pnt[1] * frac
 
 
+def rotate(pnt, rad):
+    """rotate a point"""
+    return pnt[0] * math.cos(rad) - pnt[1] * math.sin(rad), pnt[0] * math.sin(rad) + pnt[1] * math.cos(rad)
+
+
 def length(line: Line) -> float:
     """length of a line"""
     d_x = line.end[0] - line.start[0]
@@ -207,6 +215,11 @@ def interp(start, end, frac):
 def scale_center(pnt, fac, center):
     """scale point in relation to a center"""
     return add(scale(sub(pnt, center), fac), center)
+
+
+def rotate_center(pnt, rad, center):
+    """rotate a point around a center"""
+    return add(rotate(sub(pnt, center), rad), center)
 
 
 # ~~~~ animation utilities ~~~~
@@ -295,7 +308,7 @@ def flatten(struct):
 
 # ~~~~ dispatching functions for animating and transforming primitives ~~~~
 
-def frac_primitive(prim: Primitive, frac: float) -> Primitive:
+def frac_primitive(prim: P, frac: float) -> P:
     """find a fraction of a primitive for animating the pen"""
 
     # TODO: consider dealing with the <=0.0 and >=1.0 cases here
@@ -307,13 +320,13 @@ def frac_primitive(prim: Primitive, frac: float) -> Primitive:
     elif isinstance(prim, Polyline):
         prim_animated = polyline_frac(prim, frac)
     else:
-        print("No implementation of animate_pen for primitive type", prim.__class__)
+        print("No implementation of frac_primitive for primitive type", prim.__class__)
         prim_animated = None
 
     return prim_animated
 
 
-def translate_primitive(prim: Primitive, trans: Tuple) -> Primitive:
+def translate_primitive(prim: P, trans: Tuple) -> P:
     """translate"""
 
     if isinstance(prim, Line):
@@ -342,8 +355,8 @@ def translate_primitive(prim: Primitive, trans: Tuple) -> Primitive:
     return prim_animated
 
 
-def scale_center_primitive(prim: Primitive, fac: float, center: Tuple) -> Primitive:
-    """translate"""
+def scale_center_primitive(prim: P, fac: float, center: Tuple) -> P:
+    """scale a primitive around a center point"""
 
     if isinstance(prim, Line):
         prim_animated = attr.evolve(
@@ -364,7 +377,37 @@ def scale_center_primitive(prim: Primitive, fac: float, center: Tuple) -> Primit
                     end=scale_center(x.end, fac, center))
                 for x in prim.lines])
     else:
-        print("No implementation of scale for primitive type", prim.__class__)
+        print("No implementation of scale_center for primitive type", prim.__class__)
+        prim_animated = None
+
+    return prim_animated
+
+
+def rotate_center_primitive(prim: P, rad: float, center: Tuple) -> P:
+    """rotate a primitive"""
+
+    if isinstance(prim, Line):
+        prim_animated = attr.evolve(
+            prim,
+            start=rotate_center(prim.start, rad, center),
+            end=rotate_center(prim.end, rad, center))
+    elif isinstance(prim, Circle):
+        prim_animated = attr.evolve(
+            prim,
+            center=rotate_center(prim.center, rad, center),
+            start_angle=prim.start_angle + rad,
+            end_angle=prim.end_angle + rad)
+    elif isinstance(prim, Polyline):
+        prim_animated = attr.evolve(
+            prim,
+            lines=[
+                attr.evolve(
+                    x,
+                    start=rotate_center(x.start, rad, center),
+                    end=rotate_center(x.end, rad, center))
+                for x in prim.lines])
+    else:
+        print("No implementation of rotate_center for primitive type", prim.__class__)
         prim_animated = None
 
     return prim_animated
