@@ -13,13 +13,11 @@ import numpy as np
 from symbols import symbols
 
 
-def draw_frame(
-        canvas: np.ndarray,
+def animate_frame(
         animation_flat: List[symbols.TimedAnim],
         time: float,
-        effect_func: Optional[Callable],
-        render_func: Optional[Callable],
-        ) -> None:
+        effect_func: Optional[Callable]
+        ) -> List[symbols.Primitive]:
 
     """draw a frame of an animation"""
 
@@ -46,8 +44,8 @@ def draw_frame(
             # basically just a single pen type
             frac = np.clip(
                 float(time - timed_anim.time) / timed_anim.anim.head_duration, 0.0, 1.0)
-
             prim_animated = symbols.frac_primitive(prim, frac)
+
         elif isinstance(anim, symbols.AnimDurationMulti):
             frac = np.clip(
                 float(time - timed_anim.time) / timed_anim.anim.duration, 0.0, 1.0)
@@ -72,6 +70,19 @@ def draw_frame(
                     fac_cur = fac_start + frac * (fac_end - fac_start)
                     center_cur = symbols.interp(center_start, center_end, frac)
                     prim_animated = symbols.scale_center_primitive(prim_animated, fac_cur, center_cur)
+                elif mod[0] == "rotate":
+                    _, rad_start, rad_end = mod
+                    rad_cur = rad_start + frac * (rad_end - rad_start)
+                    if isinstance(prim, symbols.Line):
+                        center_cur = (0.0, 0.0)
+                    else:
+                        center_cur = prim.center
+                    prim_animated = symbols.rotate_center_primitive(prim_animated, rad_cur, center_cur)
+                elif mod[0] == "rotate_center":
+                    _, rad_start, rad_end, center_start, center_end = mod
+                    rad_cur = rad_start + frac * (rad_end - rad_start)
+                    center_cur = symbols.interp(center_start, center_end, frac)
+                    prim_animated = symbols.rotate_center_primitive(prim_animated, rad_cur, center_cur)
         else:
             print("No implementation for animation type", anim.__class__)
             prim_animated = None
@@ -84,5 +95,4 @@ def draw_frame(
 
     to_render = sorted(to_render, key=lambda x: x.depth)
 
-    if render_func is not None:
-        render_func(canvas, to_render)
+    return to_render
