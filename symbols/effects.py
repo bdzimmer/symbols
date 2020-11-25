@@ -75,3 +75,31 @@ def glow_alpha(img, size, factor):
         Image.fromarray(np.array(img, dtype=np.uint8)),
         Image.fromarray(np.array(blurred, dtype=np.uint8))
     ))
+
+
+def chromatic_abberation(img: np.array, shift: int) -> np.array:
+    """chromatic abberation"""
+
+    red = img[:, :, 0]
+    green = img[:, :, 1]
+    blue = img[:, :, 2]
+
+    green = np.roll(green, -shift, axis=1)
+    blue = np.roll(blue, shift, axis=1)
+
+    return np.stack([red, green, blue], axis=2)
+
+
+def slats_vertical(img: np.array, shifts: np.array) -> np.array:
+    """shift vertical strips of the image"""
+    n_slats = shifts.shape[0]
+    slat_width = int(img.shape[1] / n_slats)
+    res = np.zeros(img.shape, dtype=img.dtype)
+    for idx in range(n_slats):
+        start_x = idx * slat_width
+        slat = img[:, start_x:(start_x + slat_width)]
+        slat = np.roll(slat, shifts[idx], axis=0)
+        res[:, start_x:(start_x + slat_width)] = slat
+    return res
+
+
